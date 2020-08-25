@@ -25,7 +25,7 @@ import logging
 import os
 import pickle
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 Config = namedtuple('Config', ['model', 'expected_acc'])
 
@@ -122,6 +122,8 @@ def eval_acc(mod, dataset, batch_fn, target='llvm', ctx=tvm.cpu(), log_interval=
             _, top5 = acc_top5.get()
             nsamples = (i + 1) * batch_size
             logging.info('[%d samples] validation: acc-top1=%f acc-top5=%f', nsamples, top1, top5)
+            if nsamples == 1000:
+                break
     logging.info('[final] validation: acc-top1=%f acc-top5=%f', top1, top5)
     return top1
 
@@ -142,21 +144,26 @@ def test_quantize_acc(cfg, rec_val):
     qconfig = hago.qconfig(skip_conv_layers=[0],
                            log_file='temp.log')
 
-    val_data, batch_fn = get_val_data(cfg.model, rec_val=rec_val, batch_size=32)
+    batch_size = 1
+    val_data, batch_fn = get_val_data(cfg.model, rec_val=rec_val, batch_size=batch_size)
     dataset = get_calibration_dataset(val_data, batch_fn)
 
-    mod = get_model(cfg.model, 32, qconfig, dataset=dataset)
-    acc = eval_acc(mod, val_data, batch_fn, target='cuda', ctx=tvm.gpu(1))
+    # for orig in [True, False]:
+    for orig in [False]:
+        mod = get_model(cfg.model, batch_size, qconfig, dataset=dataset, original=orig)
+        acc = eval_acc(mod, val_data, batch_fn, target='llvm', ctx=tvm.cpu())
+        print("Animesh", orig, acc)
     return acc
 
 
 if __name__ == "__main__":
     #TODO(for user): replace the line with the path to imagenet validation dataset
-    rec_val = "~/datasets1/imagenet/rec/val.rec"
+    rec_val = "~/tensorflow_datasets/downloads/manual/imagenet2012/val_rec.rec"
 
     results = []
     configs = [
         Config('resnet18_v1', expected_acc=0.67),
+        # Config('resnet50_v1', expected_acc=0.67),
     ]
     # rec = hago.pick_best(".quantize_strategy_search.log", 'quant_acc')
 

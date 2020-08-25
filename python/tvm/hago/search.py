@@ -78,9 +78,12 @@ def generate_search_space(graph, hardware):
 
     print('bit limit')
     edge2bit = build_edge_dict(graph, bits, topology.edge_conds)
-    print_edge_dict(graph, edge2bit)
+    # print_edge_dict(graph, edge2bit)
 
-    choices = [list(reversed(range(4, bit + 1))) for bit in bits]
+    # FIXME - Simplifying for now
+    # choices = [list(reversed(range(4, bit + 1))) for bit in bits]
+    choices = [list(reversed(range(bit, bit + 1))) for bit in bits]
+
     # print('bit choices')
     # edge2choices = complete_dict(choices, topology.edge2cond)
     # print_edge_dict(graph, edge2choices)
@@ -333,6 +336,7 @@ def get_measure_func(kind):
 
 def _group_same_graph(graph, hardware, topology, bits_list):
     """group guesses which can share the same graph"""
+    # FIXME - Understand what is happening here?
     constraints = []
     for bits in bits_list:
         cstrs = qtz.select_constraint(graph, hardware, topology, bits)
@@ -400,8 +404,8 @@ class Tuner(object):
             trials = self.next_trials()
             measures = self._measure(trials)
 
-            if fout is not None:
-                self._write_to_file(fout, measures)
+            # if fout is not None:
+            #     self._write_to_file(fout, measures)
             self.update(measures)
             num_trials += len(measures)
         return self.best_measure

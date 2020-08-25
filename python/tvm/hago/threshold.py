@@ -50,7 +50,6 @@ def threshold_rectify(graph, topology, bits, thresholds):
                 output_bits = [edge2bit[edge] for edge in output_edges]
                 input_tholds = [thresholds[node2idx[src]] for src in node.args]
                 output_tholds = [thresholds[node2idx[node]]] * len(output_edges)
-
                 tholds = frectify(input_bits, output_bits, input_tholds, output_tholds)
                 assert len(tholds) == (len(input_tholds) + len(output_tholds))
                 for i, src in enumerate(node.args):
@@ -73,6 +72,8 @@ def threshold_estimate(graph, topology, stats, bits=None, rectify=True):
         thresholds = stats.range
     elif cfg.threshold_estimate_method == 'power_of_two_range':
         thresholds = stats.power_of_two_range
+    elif cfg.threshold_estimate_method == 'avg_min_max':
+        thresholds = stats.avg_range
     else:
         raise ValueError
 

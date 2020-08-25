@@ -45,7 +45,8 @@ class QConfig(Object):
 
     _node_defaults = {
         "skip_conv_layers": [0],
-        "threshold_estimate_method": "power_of_two_range",
+        # "threshold_estimate_method": "power_of_two_range",
+        "threshold_estimate_method": "avg_min_max",
         "global_scale": 8.0,
         "log_file": ".quantize_strategy_search.log",
         # "do_simulation": False,
