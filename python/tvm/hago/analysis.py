@@ -32,7 +32,7 @@ from collections import OrderedDict
 
 
 class Stats(object):
-    def __init__(self, data, mode='avg_min_max'):
+    def __init__(self, data):
         """
         data: intermediate data * number_of_batches
         """

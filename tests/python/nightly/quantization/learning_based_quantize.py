@@ -148,8 +148,8 @@ def test_quantize_acc(cfg, rec_val):
     val_data, batch_fn = get_val_data(cfg.model, rec_val=rec_val, batch_size=batch_size)
     dataset = get_calibration_dataset(val_data, batch_fn)
 
-    # for orig in [True, False]:
-    for orig in [False]:
+    for orig in [True, False]:
+    # for orig in [False]:
         mod = get_model(cfg.model, batch_size, qconfig, dataset=dataset, original=orig)
         acc = eval_acc(mod, val_data, batch_fn, target='llvm', ctx=tvm.cpu())
         print("Animesh", orig, acc)
@@ -162,8 +162,8 @@ if __name__ == "__main__":
 
     results = []
     configs = [
-        Config('resnet18_v1', expected_acc=0.67),
-        # Config('resnet50_v1', expected_acc=0.67),
+        # Config('resnet18_v1', expected_acc=0.67),
+        Config('resnet50_v1', expected_acc=0.67),
     ]
     # rec = hago.pick_best(".quantize_strategy_search.log", 'quant_acc')
 

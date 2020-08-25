@@ -119,10 +119,13 @@ def prerequisite_optimize(func, params=None):
     """ Prerequisite optimization passes for quantization. Perform
     "SimplifyInference", "FoldScaleAxis", "FoldConstant", and
     "CanonicalizeOps" optimization before quantization. """
-    optimize = tvm.transform.Sequential([relay.transform.SimplifyInference(),
+
+    # FIXME - If canonicalize is not put before simplifyinference, multiply from bn is not constat
+    # folded.
+    optimize = tvm.transform.Sequential([relay.transform.CanonicalizeOps(),
+                                         relay.transform.SimplifyInference(),
                                          relay.transform.FoldConstant(),
                                          relay.transform.FoldScaleAxis(),
-                                         relay.transform.CanonicalizeOps(),
                                          relay.transform.FoldConstant()])
 
     if params:
