@@ -120,8 +120,6 @@ def prerequisite_optimize(func, params=None):
     "SimplifyInference", "FoldScaleAxis", "FoldConstant", and
     "CanonicalizeOps" optimization before quantization. """
 
-    # FIXME - If canonicalize is not put before simplifyinference, multiply from bn is not constat
-    # folded.
     optimize = tvm.transform.Sequential([relay.transform.CanonicalizeOps(),
                                          relay.transform.SimplifyInference(),
                                          relay.transform.FoldConstant(),
@@ -294,10 +292,6 @@ class Simulator(tvm.relay.ExprMutator):
                     param = SimulatedQuantizeParams(in_scale, out_scale, clip_min, clip_max,
                                                     in_dtype, out_dtype)
                     print('  {}'.format(param))
-                    # in_cond, in_expo = exponent_based_two(param.in_scale)
-                    # assert in_cond, "scale={}, expo={}\nparam\{}".format(param.in_scale, in_expo, param)
-                    # out_cond, out_expo = exponent_based_two(param.out_scale)
-                    # assert out_cond, "scale={}, expo={}\nparam={}".format(param.out_scale, out_expo, param)
                     internal_params.append(param)
                 return
             if isinstance(node, relay.Function):

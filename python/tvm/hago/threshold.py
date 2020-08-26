@@ -68,12 +68,10 @@ def threshold_estimate(graph, topology, stats, bits=None, rectify=True):
 
     if cfg.threshold_estimate_method == 'global_scale':
         thresholds = [cfg.global_scale for _ in exprs]
-    elif cfg.threshold_estimate_method == 'max_range':
+    elif cfg.threshold_estimate_method == 'avg_min_max_range':
         thresholds = stats.range
     elif cfg.threshold_estimate_method == 'power_of_two_range':
         thresholds = stats.power_of_two_range
-    elif cfg.threshold_estimate_method == 'avg_min_max':
-        thresholds = stats.avg_range
     else:
         raise ValueError
 

@@ -25,7 +25,7 @@ import logging
 import os
 import pickle
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 Config = namedtuple('Config', ['model', 'expected_acc'])
 
@@ -122,8 +122,6 @@ def eval_acc(mod, dataset, batch_fn, target='llvm', ctx=tvm.cpu(), log_interval=
             _, top5 = acc_top5.get()
             nsamples = (i + 1) * batch_size
             logging.info('[%d samples] validation: acc-top1=%f acc-top5=%f', nsamples, top1, top5)
-            if nsamples == 1000:
-                break
     logging.info('[final] validation: acc-top1=%f acc-top5=%f', top1, top5)
     return top1
 
@@ -149,10 +147,9 @@ def test_quantize_acc(cfg, rec_val):
     dataset = get_calibration_dataset(val_data, batch_fn)
 
     for orig in [True, False]:
-    # for orig in [False]:
         mod = get_model(cfg.model, batch_size, qconfig, dataset=dataset, original=orig)
         acc = eval_acc(mod, val_data, batch_fn, target='llvm', ctx=tvm.cpu())
-        print("Animesh", orig, acc)
+        print("Final accuracy", "int8" if orig else "fp32", acc)
     return acc
 
 
@@ -162,8 +159,9 @@ if __name__ == "__main__":
 
     results = []
     configs = [
-        # Config('resnet18_v1', expected_acc=0.67),
-        Config('resnet50_v1', expected_acc=0.67),
+        Config('resnet18_v1', expected_acc=0.67),
+        # Config('resnet50_v1', expected_acc=0.67),
+        # Config('inceptionv3', expected_acc=0.67),
     ]
     # rec = hago.pick_best(".quantize_strategy_search.log", 'quant_acc')
 
