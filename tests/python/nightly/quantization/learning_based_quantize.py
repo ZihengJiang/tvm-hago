@@ -80,8 +80,8 @@ def get_model(model_name, batch_size, qconfig, original=False, simulated=False, 
         space = hago.generate_search_space(graph, hardware)
         # tuner = hago.BatchedGreedySearchTuner(space, 'accuracy')
         tuner = hago.DefaultSetting(space, 'accuracy')
-        ctx = tvm.cpu()
-        target = 'llvm'
+        ctx = tvm.gpu()
+        target = 'cuda'
         strategy, result = hago.search_quantize_strategy(graph, hardware, dataset, tuner, ctx, target)
 
         quantizer = hago.create_quantizer(graph, hardware, strategy)
@@ -95,7 +95,7 @@ def get_model(model_name, batch_size, qconfig, original=False, simulated=False, 
         return simulated_graph
 
 
-def eval_acc(mod, dataset, batch_fn, target='llvm', ctx=tvm.cpu(), log_interval=100):
+def eval_acc(mod, dataset, batch_fn, target='cuda', ctx=tvm.gpu(), log_interval=100):
     with relay.build_config(opt_level=3):
         graph, lib, params = relay.build(mod, target)
     # create runtime module
@@ -148,7 +148,7 @@ def test_quantize_acc(cfg, rec_val):
 
     for orig in [True, False]:
         mod = get_model(cfg.model, batch_size, qconfig, dataset=dataset, original=orig)
-        acc = eval_acc(mod, val_data, batch_fn, target='llvm', ctx=tvm.cpu())
+        acc = eval_acc(mod, val_data, batch_fn, target='cuda', ctx=tvm.gpu())
         print("Final accuracy", "int8" if orig else "fp32", acc)
     return acc
 
