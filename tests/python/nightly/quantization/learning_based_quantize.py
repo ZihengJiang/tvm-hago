@@ -46,7 +46,7 @@ def get_val_data(model_name,
     val_data = mx.io.ImageRecordIter(
         path_imgrec         = rec_val,
         preprocess_threads  = num_workers,
-        shuffle             = False,
+        shuffle             = True,
         batch_size          = batch_size,
         resize              = 256,
         data_shape          = (3, img_size, img_size),
