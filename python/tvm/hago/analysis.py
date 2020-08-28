@@ -37,7 +37,7 @@ class Stats(object):
         data: intermediate data * number_of_batches
         """
         self.data = data
-        # FIXME - Add quantize ranges.
+        # FIXME - Add quantile ranges.
         # Range represents avg min/max
         self.range = []
         self.power_of_two_range = []

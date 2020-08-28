@@ -92,7 +92,7 @@ def get_model(model_name, batch_size, qconfig, original=False, simulated=False, 
         logging.debug('quantize graph')
         logging.debug(quantized_graph.astext(show_meta_data=False))
         # hago.inspect_graph_statistic(graph, hardware, strategy, dataset, ctx, target)
-        return simulated_graph
+        return quantized_graph
 
 
 def eval_acc(mod, dataset, batch_fn, target='cuda', ctx=tvm.gpu(), log_interval=100):
@@ -142,7 +142,7 @@ def test_quantize_acc(cfg, rec_val):
     qconfig = hago.qconfig(skip_conv_layers=[0],
                            log_file='temp.log')
 
-    batch_size = 1
+    batch_size = 32
     val_data, batch_fn = get_val_data(cfg.model, rec_val=rec_val, batch_size=batch_size)
     dataset = get_calibration_dataset(val_data, batch_fn)
 

@@ -400,9 +400,8 @@ class Tuner(object):
             trials = self.next_trials()
             measures = self._measure(trials)
 
-            # TODO - Failure in writing to file for avg_min_max
-            # if fout is not None:
-            #     self._write_to_file(fout, measures)
+            if fout is not None:
+                self._write_to_file(fout, measures)
             self.update(measures)
             num_trials += len(measures)
         return self.best_measure
