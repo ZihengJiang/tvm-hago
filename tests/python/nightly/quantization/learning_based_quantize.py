@@ -146,22 +146,23 @@ def test_quantize_acc(cfg, rec_val):
     val_data, batch_fn = get_val_data(cfg.model, rec_val=rec_val, batch_size=batch_size)
     dataset = get_calibration_dataset(val_data, batch_fn)
 
-    for orig in [True, False]:
+    for orig in [False]:
         mod = get_model(cfg.model, batch_size, qconfig, dataset=dataset, original=orig)
-        acc = eval_acc(mod, val_data, batch_fn, target='cuda', ctx=tvm.gpu())
-        print("Final accuracy", "int8" if orig else "fp32", acc)
+        acc = eval_acc(mod, val_data, batch_fn, target='cuda', ctx=tvm.gpu(2))
+        print("Final accuracy", "fp32" if orig else "int8", acc)
     return acc
 
 
 if __name__ == "__main__":
     #TODO(for user): replace the line with the path to imagenet validation dataset
-    rec_val = "~/tensorflow_datasets/downloads/manual/imagenet2012/val_rec.rec"
+    rec_val = "~/datasets1/imagenet/rec/val.rec"
+    # rec_val = "~/tensorflow_datasets/downloads/manual/imagenet2012/val_rec.rec"
 
     results = []
     configs = [
-        Config('resnet18_v1', expected_acc=0.67),
+        # Config('resnet18_v1', expected_acc=0.67),
         # Config('resnet50_v1', expected_acc=0.67),
-        # Config('inceptionv3', expected_acc=0.67),
+        Config('inceptionv3', expected_acc=0.67),
     ]
     # rec = hago.pick_best(".quantize_strategy_search.log", 'quant_acc')
 

@@ -30,6 +30,7 @@ import numpy as np
 from itertools import islice
 from collections import OrderedDict
 
+# TODO: - Add quantile ranges.
 
 class Stats(object):
     def __init__(self, data):
@@ -37,7 +38,6 @@ class Stats(object):
         data: intermediate data * number_of_batches
         """
         self.data = data
-        # FIXME - Add quantile ranges.
         # Range represents avg min/max
         self.range = []
         self.power_of_two_range = []
@@ -64,22 +64,22 @@ class Stats(object):
         pass
 
 
-def evaluate(func, dataset, ctx, target):
-    # list of array: (num_outputs, num_batch, arr)
-    with relay.transform.build_config(opt_level=2):
-        graph, lib, params = relay.build_module.build(func, target=target)
-    runtime = graph_runtime.create(graph, lib, ctx)
-    runtime.set_input(**params)
-    num_outputs = runtime.get_num_outputs()
-    outputs = [[] for i in range(num_outputs)]
-
-    for batch_id, batch in enumerate(dataset):
-        runtime.set_input('data', batch['data'])
-        runtime.run()
-        for i in range(num_outputs):
-            output = runtime.get_output(i).asnumpy()
-            outputs[i].append(output)
-    return outputs
+# def evaluate(func, dataset, ctx, target):
+#     # list of array: (num_outputs, num_batch, arr)
+#     with relay.transform.build_config(opt_level=2):
+#         graph, lib, params = relay.build_module.build(func, target=target)
+#     runtime = graph_runtime.create(graph, lib, ctx)
+#     runtime.set_input(**params)
+#     num_outputs = runtime.get_num_outputs()
+#     outputs = [[] for i in range(num_outputs)]
+# 
+#     for batch_id, batch in enumerate(dataset):
+#         runtime.set_input('data', batch['data'])
+#         runtime.run()
+#         for i in range(num_outputs):
+#             output = runtime.get_output(i).asnumpy()
+#             outputs[i].append(output)
+#     return outputs
 
 
 def collect_stats(graph, dataset, ctx, target):
