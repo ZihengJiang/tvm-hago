@@ -188,64 +188,6 @@ def quantize_context():
     return QuantizeContext.Current
 
 
-# def build_node_index(graph):
-#     node2idx = OrderedDict()
-#     def fvisit_build_index(e):
-#         if isinstance(e, (relay.Var, relay.Constant, relay.Call)):
-#             node2idx[e] = fvisit_build_index.idx_cnt 
-#             fvisit_build_index.idx_cnt += 1
-#     fvisit_build_index.idx_cnt = 0
-#     relay.analysis.post_order_visit(graph, fvisit_build_index)
-#     num_nodes = fvisit_build_index.idx_cnt
-#     return node2idx
-# 
-# def build_edge_index(graph):
-#     edge2idx = OrderedDict() 
-#     def fvisit_build_index(e):
-#         if isinstance(e, relay.Call):
-#             for arg in e.args:
-#                 edge2idx[(arg, e)] = fvisit_build_index.idx_cnt 
-#                 fvisit_build_index.idx_cnt += 1
-#     fvisit_build_index.idx_cnt = 0
-#     relay.analysis.post_order_visit(graph, fvisit_build_index)
-#     num_edges = fvisit_build_index.idx_cnt
-#     return edge2idx
-# 
-# def build_node2edges(graph):
-#     node2edges = defaultdict(list)
-#     def fvisit_build_index(node):
-#         if isinstance(node, relay.Call):
-#             for src in node.args:
-#                 node2edges[src].append((src, node)) 
-#     relay.analysis.post_order_visit(graph, fvisit_build_index)
-#     return node2edges
-# 
-# def build_node_dict(graph, alist, node_conds):
-#     ret = OrderedDict()
-#     cnt = 0
-#     node2idx = build_node_index(graph)
-#     for key, nidx in node2idx.items():
-#         val = None
-#         if node_conds[nidx]:
-#             val = alist[cnt]
-#             cnt += 1
-#         ret[key] = val
-#     assert cnt == len(alist)
-#     return ret
-# 
-# def build_edge_dict(graph, alist, edge_conds):
-#     ret = OrderedDict()
-#     cnt = 0
-#     edge2idx = build_edge_index(graph)
-#     for key, eidx in edge2idx.items():
-#         val = None
-#         if edge_conds[eidx]:
-#             val = alist[cnt]
-#             cnt += 1
-#         ret[key] = val
-#     assert cnt == len(alist)
-#     return ret
-
 def build_node_mapping(sgraph, graph):
     """build a snode -> node mapping"""
     def fvisit_collect_nodes(e):
