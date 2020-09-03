@@ -312,12 +312,13 @@ class Simulator(tvm.relay.ExprMutator):
         # num of edges + number of output edges
         internal_params, output_params = [], []
         def infer_scale_for_node(node):
-            if isinstance(node, (relay.Var, relay.Constant)):
+            if not topology.is_quantized_node(node) or \
+                isinstance(node, (relay.Var, relay.Constant)):
                 scale = 1.0
                 return scale
             assert isinstance(node, relay.Call)
             finfer_scale = node.op.get_attr('FHagoInferScale')
-            assert finfer_scale
+            assert finfer_scale, "no FHagoInferScale for {}".format(node.op.name)
             input_scales = [internal_params[edge2idx[edge]].out_scale for edge in list_in_edges(node)]
             scale = finfer_scale(input_scales)
             return scale
@@ -425,8 +426,8 @@ class Realizer(tvm.relay.ExprMutator):
         cstr = self._constraints[nidx]
         frealize = node.op.get_attr("FHagoRealize")
         if frealize and cstr is not None:
-            in_dtypes = list(map(str, cstr.idtypes))
-            out_dtypes = list(map(str, cstr.odtypes))
+            in_dtypes = [str(cstr.in_dtype(i)) for i in range(node.op.num_inputs)] 
+            out_dtypes = [str(cstr.out_dtype(0))]
             new_node = frealize(new_node, in_dtypes, out_dtypes)
         return new_node
 

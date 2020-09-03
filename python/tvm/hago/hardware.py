@@ -137,26 +137,21 @@ class Hardware(object):
 
 def create_accelerator_description():
     hardware = Hardware()
-    # hardware.add_op_desc('add', OpDesc(in_dtypes='int32', out_dtypes='int32'))
-    # hardware.add_op_desc('add', OpDesc(in_dtypes='float32', out_dtypes='float32'))
-    # hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes='int8', out_dtypes='int32'))
+    hardware.add_op_desc('add', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    # hardware.add_op_desc('add', OpDesc(in_dtypes='int8', out_dtypes='int16'))
+    # hardware.add_op_desc('add', OpDesc(in_dtypes='int16', out_dtypes='int32'))
+    hardware.add_op_desc('add', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    # hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes='int8', out_dtypes='int16'))
+    hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes='int8', out_dtypes='int32'))
+    # hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes='int16', out_dtypes='int32'))
 
-    # desc['add'].append(OpDesc(in_dtypes=['int8', 'int8'], out_dtypes=['int16']))
-    # desc['add'].append(OpDesc(in_dtypes=['int8', 'int8'], out_dtypes=['int32']))
-    # desc['add'].append(OpDesc(in_dtypes=['int16', 'int16'], out_dtypes=['int32']))
-    # desc['add'].append(OpDesc(in_dtypes=['int32', 'int32'], out_dtypes=['int32']))
-    # desc['add'].append(OpDesc(in_dtypes=['float32', 'float32'], out_dtypes=['float32']))
-    # TODO(ziheng) enable int32 addition will lead to overflow easily
-    #  - add output_bit constraint to restrict the using for output bit-width
-    # TODO(ziheng) enable int16 conv2d will lead to overflow easily
-    #  - add input_bit constraint to restrict the using for output bit-width
-    # desc['nn.conv2d'].append(OpDesc(in_dtypes=['int8', 'int8'], out_dtypes=['int16']))
-    # desc['nn.conv2d'].append(OpDesc(in_dtypes=['int8', 'int8'], out_dtypes=['int32']))
-    # desc['nn.conv2d'].append(OpDesc(in_dtypes=['int16', 'int16'], out_dtypes=['int32']))
+    hardware.add_op_desc('concatenate', OpDesc(in_dtypes='float32', out_dtypes='float32'))
 
-    # desc['nn.relu'].append(OpDesc(in_dtypes=['int32', 'int32'], out_dtypes=['int32']))
-    # desc['nn.max_pool2d'].append(OpDesc(in_dtypes=['int32', 'int32'], out_dtypes=['int32']))
-    # desc['nn.batch_flatten'].append(OpDesc(in_dtypes=['float32'], out_dtypes=['float32']))
-    # desc['nn.dense'].append(OpDesc(in_dtypes=['float32', 'float32'], out_dtypes=['float32']))
-    # desc['nn.global_avg_pool2d'].append(OpDesc(in_dtypes=['float32'], out_dtypes=['float32']))
+    hardware.add_op_desc('nn.relu', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    hardware.add_op_desc('nn.avg_pool2d', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    # hardware.add_op_desc('nn.avg_pool2d', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    hardware.add_op_desc('nn.max_pool2d', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    hardware.add_op_desc('nn.batch_flatten', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.dense', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.global_avg_pool2d', OpDesc(in_dtypes='float32', out_dtypes='float32'))
     return hardware

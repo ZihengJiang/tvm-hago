@@ -487,9 +487,19 @@ class BatchedGreedySearchTuner(Tuner):
         self.dim_idx += 1
 
 
+def list_ops(graph):
+    ops = set()
+    def fvisit(node):
+        if isinstance(node, relay.Call):
+            ops.add(node.op.name)
+    relay.analysis.post_order_visit(graph, fvisit)
+    return ops
+
 def search_quantize_strategy(graph, hardware, dataset, tuner, ctx, target):
     assert isinstance(graph, relay.Function)
     assert isinstance(dataset, qtz.CalibrationDataset)
+    print('ops in graph:')
+    print(list_ops(graph))
     qconfig = current_qconfig()
     origin_out = evaluate(graph, dataset, ctx, target)[0]
     origin_acc = calculate_accuracy(dataset, origin_out)
