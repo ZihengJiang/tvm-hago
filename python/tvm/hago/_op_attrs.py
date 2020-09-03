@@ -223,7 +223,6 @@ def identity_scale(input_scales):
     return scale0
 
 register_infer_scale("add", identity_scale)
-# register_infer_scale("concatenate", identity_scale)
 register_infer_scale("nn.relu", identity_scale)
 register_infer_scale("nn.max_pool2d", identity_scale)
 register_infer_scale("nn.avg_pool2d", identity_scale)

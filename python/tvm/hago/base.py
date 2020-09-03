@@ -336,7 +336,7 @@ def edge_str(edge, node2idx=None):
     return "{} -> {}".format(node_str(edge[0], node2idx), node_str(edge[1], node2idx))
 
 def list_in_nodes(node):
-    # handle Tuple
+    """Handle Tuple here."""
     assert isinstance(node, relay.Call)
     for arg in node.args:
         if isinstance(arg, (relay.Var, relay.Constant, relay.Call)):
@@ -348,101 +348,10 @@ def list_in_nodes(node):
             raise ValueError
 
 def list_in_edges(node):
+    """Handle Tuple here."""
     assert isinstance(node, relay.Call)
     for src in list_in_nodes(node):
         yield (src, node)
-
-
-# def print_node_list(graph, alist):
-#     node2idx = build_node_index(graph)
-#     def fvisit_print(node):
-#         if isinstance(node, (relay.Var, relay.Constant, relay.Call)):
-#             print("{}: {}".format(node_str(node), alist[node2idx[node]]))
-#     relay.analysis.post_order_visit(graph, fvisit_print)
-# 
-# 
-# def print_edge_list(graph, alist):
-#     node2idx = build_node_index(graph)
-#     edge2idx = build_edge_index(graph)
-#     node2edges = build_node2edges(graph)
-#     def fvisit_print(node):
-#         if isinstance(node, relay.Call):
-#             oedges = node2edges[node]
-#             out_infos = [alist[edge2idx[e]] for e in oedges]
-#             print('--------')
-#             print('{}: {}'.format(node_str(node, node2idx), out_infos))
-#             for src in node.args:
-#                 info = alist[edge2idx[(src, node)]]
-#                 print('  {} : {}'.format(edge_str((src, node), node2idx), info))
-#     relay.analysis.post_order_visit(graph, fvisit_print)
-# 
-# 
-# def print_node_dict(graph, node2info):
-#     node2idx = build_node_index(graph)
-#     def fvisit_print(node):
-#         if isinstance(node, (relay.Var, relay.Constant, relay.Call)):
-#             print('{}: {}'.format(node_str(node, node2idx), node2info[node]))
-#     relay.analysis.post_order_visit(graph, fvisit_print)
-# 
-# 
-# def print_edge_dict(graph, edge2info):
-#     node2idx = build_node_index(graph)
-#     node2edges = build_node2edges(graph)
-#     def fvisit_print(node):
-#         if isinstance(node, relay.Call):
-#             oedges = node2edges[node]
-#             out_infos = [edge2info[e] for e in oedges]
-#             print('--------')
-#             print('{}: {}'.format(node_str(node, node2idx), out_infos))
-#             for src in node.args:
-#                 info = edge2info[(src, node)]
-#                 print('  {} : {}'.format(edge_str((src, node), node2idx), info))
-#     relay.analysis.post_order_visit(graph, fvisit_print)
-
-
-# def print_infos(graph, node2info, edge2info):
-#     node2idx = build_node_index(graph)
-#     def fvisit_print(node):
-#         if isinstance(node, relay.Call):
-#             print('--------')
-#             print('{}: {}'.format(node_str(node, node2idx), node2info[node]))
-#             for src in node.args:
-#                 info = edge2info[(src, node)]
-#                 print('  {} : {}'.format(edge_str((src, node), node2idx), info))
-#     relay.analysis.post_order_visit(graph, fvisit_print)
-# 
-# 
-# def print_scale_info(graph, bits, thresholds):
-#     node2idx, num_edge = build_node_index(graph)
-#     edge2idx, num_edge = build_edge_index(graph)
-#     def fvisit_print(node):
-#         if isinstance(node, relay.Call):
-#             for src in node.args:
-#                 thold = thresholds[node2idx[src]]
-#                 eidx = edge2idx[(src, node)]
-#                 bit = bits[eidx]
-#                 scale = thold / (2 ** (bit - 1) - 1)
-#                 print('{} <- {}: {}'.format(node_str(node), node_str(src), scale))
-#     relay.analysis.post_order_visit(graph, fvisit_print)
-# 
-# 
-# def evaluate(func, dataset, ctx=tvm.cpu(), target='llvm', fcallback=None):
-#     # list of array: (num_outputs, num_batch, arr)
-#     with relay.transform.build_config(opt_level=2):
-#         graph, lib, params = relay.build_module.build(func, target=target)
-#     runtime = graph_runtime.create(graph, lib, ctx)
-#     runtime.set_input(**params)
-#     num_outputs = runtime.get_num_outputs()
-#     outputs = [[] for i in range(num_outputs)]
-# 
-#     for batch_id, batch in enumerate(dataset):
-#         runtime.set_input('data', tvm.nd.array(batch['data']))
-#         runtime.run()
-#         for i in range(num_outputs):
-#             output = runtime.get_output(i).asnumpy()
-#             outputs[i].append(output)
-#     fcallback(func, dataset, outputs)
-#     return outputs
 
 
 def evaluate(func, dataset, ctx=tvm.cpu(), target='llvm'):
@@ -475,36 +384,6 @@ def calculate_accuracy(dataset, outputs):
     acc = num_correct / num_samples
     return acc
 
-# def eval_acc(func, dataset, ctx=tvm.cpu(), target="llvm"):
-#     with relay.transform.build_config(opt_level=2):
-#         graph, lib, params = relay.build_module.build(func, target=target)
-#     outputs = []
-#     runtime = tvm.contrib.graph_runtime.create(graph, lib, ctx)
-#     runtime.set_input(**params)
-# 
-#     num_outputs = runtime.get_num_outputs()
-#     assert num_outputs == 1
-#     outputs = []
-# 
-#     num_correct = 0
-#     num_samples = 0
-#     for batch_id, batch in enumerate(dataset):
-#         for key in dataset.input_keys:
-#             print(key)
-#             runtime.set_input(key, batch[key])
-#         runtime.run()
-#         output = runtime.get_output(0).asnumpy()
-#         predict = np.argmax(output, axis=1)
-#         assert len(dataset.output_keys) == 1
-#         label = batch[dataset.output_keys[0]].asnumpy()
-#         num_correct += np.sum(predict == label)
-#         num_samples += output.shape[0]
-#         outputs.append(output)
-#     # flatten outputs
-#     outputs = np.concatenate(outputs)
-#     acc = num_correct / num_samples
-#     return outputs, acc
-
 
 def exponent_based_two(val):
     exponent = math.log2(val)
@@ -520,4 +399,3 @@ def to_scalar(constant):
     scalar = constant.data.asnumpy()
     assert scalar.size == 1
     return scalar.item()
-
