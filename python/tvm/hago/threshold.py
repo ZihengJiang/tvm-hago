@@ -72,6 +72,8 @@ def threshold_estimate(graph, topology, stats, bits=None, rectify=True):
         thresholds = stats.range
     elif cfg.threshold_estimate_method == 'power_of_two_range':
         thresholds = stats.power_of_two_range
+    elif cfg.threshold_estimate_method == 'kl_estimate':
+        thresholds = [relay.quantize.kl_divergence._find_scale_by_kl(np.array(arr)) for arr in stats.data]
     else:
         raise ValueError
 
