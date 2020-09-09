@@ -30,8 +30,6 @@ import numpy as np
 from itertools import islice
 from collections import OrderedDict
 
-# TODO: - Add quantile ranges.
-
 class Stats(object):
     def __init__(self, data):
         """
