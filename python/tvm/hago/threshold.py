@@ -74,8 +74,10 @@ def threshold_estimate(graph, topology, stats, bits=None, rectify=True):
         thresholds = stats.power_of_two_range
     elif cfg.threshold_estimate_method == 'kl_estimate':
         thresholds = [_find_scale_by_kl(np.array(arr)) for arr in stats.data]
-    elif cfg.threshold_estimate_method == 'quantile_range:0.5':
-        thresholds = [stat[1] for stat in stats.quantile_ranges]
+    elif cfg.threshold_estimate_method.startswith('quantile_range:'):
+        quantile = float(cfg.threshold_estimate_method[len('quantile_range:'):])
+        assert(0 <= quantile and quantile <= 1, "quantile range must be in the range of [0, 1]")
+        thresholds = [np.quantile(arr, quantile) for arr in stats.data]
     else:
         raise ValueError
 

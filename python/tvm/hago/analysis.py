@@ -39,7 +39,6 @@ class Stats(object):
         # Range represents avg min/max
         self.range = []
         self.power_of_two_range = []
-        self.quantile_ranges = []
         for idx in range(len(data)):
             samples = len(self.data[idx])
             arr = np.concatenate(self.data[idx]).reshape(samples, -1)
@@ -49,7 +48,6 @@ class Stats(object):
             self.range.append(arange)
             power_of_two_range = 2**np.math.ceil(np.math.log(arange, 2)) if arange > 0 else 1.0
             self.power_of_two_range.append(power_of_two_range)
-            self.quantile_ranges.append(np.quantile(arr, [0.25, 0.5, 0.75]))
 
     def __len__(self):
         return len(self.data)
