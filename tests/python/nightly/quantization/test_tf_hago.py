@@ -43,9 +43,6 @@ tf_hub_links = {
     "inception_v1"          : "https://tfhub.dev/google/imagenet/inception_v1/classification/4",
     "inception_v2"          : "https://tfhub.dev/google/imagenet/inception_v2/classification/4",
     "inception_v3"          : "https://tfhub.dev/google/imagenet/inception_v3/classification/4",
-    "inception_v3_preview"  : "https://tfhub.dev/google/tf2-preview/inception_v3/classification/4",
-    "mobilenet_v2_preview"  : "https://tfhub.dev/google/tf2-preview/mobilenet_v2/classification/4",
-    # "efficientnet_b0"       : "https://tfhub.dev/tensorflow/efficientnet/b0/classification/1",
 }
 
 
@@ -120,7 +117,7 @@ def get_model(model_name):
 
     # We assume our model's heavily-layout sensitive operators only consist of nn.conv2d
     desired_layouts = {'nn.conv2d': ['NCHW', 'default']}
-    
+
     # Convert the layout to NCHW
     # RemoveUnunsedFunctions is used to clean up the graph.
     seq = tvm.transform.Sequential([relay.transform.RemoveUnusedFunctions(),
@@ -129,35 +126,37 @@ def get_model(model_name):
         mod = seq(mod)
     return mod, params
 
+def ignore_first(tensor):
+    if tensor.shape[1] == 1001:
+        tensor = tensor[:, 1:]
+    return tensor
 
 def main():
     val_path = '/home/ubuntu/tensorflow_datasets/downloads/manual/imagenet2012/val.rec'
     if args.run_all:
-        models = ['resnet50_v1', 'inceptionv3', 'mobilenetv2_1.0', 'mobilenet1.0', 'resnet18_v1',
-                  'densenet161', 'vgg16']
+        models = tf_hub_links.keys()
     else:
         models = [args.model]
     for model_name in models:
         img_size = 299 if model_name == 'inceptionv3' else 224
+        postprocess = ignore_first if 'resnet' not in model_name else None
         val_data, batch_fn = get_val_data(img_size, val_path, batch_size)
 
-        # try:
-        if True:
-            # Original 
-            if not args.skip_fp32:
-                fp32_mod, params = get_model(model_name)
-                func = hago.prerequisite_optimize(fp32_mod['main'], params=params)
-                acc = eval_acc(func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
-                print("fp32_accuracy", model_name, acc, sep=',')
-            
-            # Quantize 
-            calib_dataset = get_calibration_dataset(val_data, batch_fn, var_name='data')
+        # Original
+        if not args.skip_fp32:
             fp32_mod, params = get_model(model_name)
-            quantized_func = quantize_hago(fp32_mod, params, calib_dataset)
-            acc = eval_acc(quantized_func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
-            print("quantized_accuracy", model_name, acc, sep=',')
-        # except:
-        #     print("Quantization failed for", model_name)
+            func = hago.prerequisite_optimize(fp32_mod['main'], params=params)
+            acc = eval_acc(func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx,
+                           postprocess=postprocess)
+            print("fp32_accuracy", model_name, acc, sep=',')
+
+        # Quantize
+        calib_dataset = get_calibration_dataset(val_data, batch_fn, var_name='data')
+        fp32_mod, params = get_model(model_name)
+        quantized_func = quantize_hago(fp32_mod, params, calib_dataset)
+        acc = eval_acc(quantized_func, val_data, batch_fn, args, var_name='data', target=target,
+                       ctx=ctx, postprocess=postprocess)
+        print("quantized_accuracy", model_name, acc, sep=',')
 
 
 if __name__ == '__main__':

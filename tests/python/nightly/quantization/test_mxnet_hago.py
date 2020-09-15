@@ -77,22 +77,18 @@ def main():
         img_size = 299 if model_name == 'inceptionv3' else 224
         val_data, batch_fn = get_val_data(img_size, val_path, batch_size)
 
-        try:
-            # Original 
-            if not args.skip_fp32:
-                fp32_mod, params = get_model(model_name)
-                func = hago.prerequisite_optimize(fp32_mod['main'], params=params)
-                acc = eval_acc(func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
-                print("fp32_accuracy", model_name, acc, sep=',')
-            
-            # Quantize 
-            calib_dataset = get_calibration_dataset(val_data, batch_fn, var_name='data')
+        if not args.skip_fp32:
             fp32_mod, params = get_model(model_name)
-            quantized_func = quantize_hago(fp32_mod, params, calib_dataset)
-            acc = eval_acc(quantized_func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
-            print("quantized_accuracy", model_name, acc, sep=',')
-        except:
-            print("Quantization failed for", model_name)
+            func = hago.prerequisite_optimize(fp32_mod['main'], params=params)
+            acc = eval_acc(func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
+            print("fp32_accuracy", model_name, acc, sep=',')
+
+        # Quantize
+        calib_dataset = get_calibration_dataset(val_data, batch_fn, var_name='data')
+        fp32_mod, params = get_model(model_name)
+        quantized_func = quantize_hago(fp32_mod, params, calib_dataset)
+        acc = eval_acc(quantized_func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
+        print("quantized_accuracy", model_name, acc, sep=',')
 
 
 if __name__ == '__main__':

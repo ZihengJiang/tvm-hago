@@ -21,7 +21,7 @@ def get_calibration_dataset(dataset, batch_fn, var_name, num_samples=100):
 ##################
 # Evaluation infra
 ##################
-def eval_acc(func, dataset, batch_fn, args, var_name, target='cuda', ctx=tvm.gpu(), log_interval=100):
+def eval_acc(func, dataset, batch_fn, args, var_name, target='cuda', ctx=tvm.gpu(), postprocess=None, log_interval=100):
     with relay.build_config(opt_level=3):
         graph, lib, params = relay.build(func, target)
     # create runtime module
@@ -46,9 +46,11 @@ def eval_acc(func, dataset, batch_fn, args, var_name, target='cuda', ctx=tvm.gpu
         data, label = batch_fn(batch, [mx.cpu(0)])
         m.set_input(var_name, data[0].asnumpy())
         m.run()
-        out_arr = m.get_output(0)
-        acc_top1.update(label, [mx.nd.array(out_arr.asnumpy())])
-        acc_top5.update(label, [mx.nd.array(out_arr.asnumpy())])
+        out_arr = m.get_output(0).asnumpy()
+        if postprocess is not None:
+            out_arr = postprocess(out_arr)
+        acc_top1.update(label, [mx.nd.array(out_arr)])
+        acc_top5.update(label, [mx.nd.array(out_arr)])
 
         if not (i + 1) % log_interval or i == exit_at_batch:
             _, top1 = acc_top1.get()
