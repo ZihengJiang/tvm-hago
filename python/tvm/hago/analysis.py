@@ -23,7 +23,7 @@ from .quantize import create_quantizer
 from .record import Strategy
 from ..contrib import graph_runtime
 from .threshold import threshold_estimate
-
+from .search import generate_search_space
 from tvm import relay
 import logging
 import numpy as np
@@ -98,7 +98,7 @@ def inspect_graph_statistic(func, hardware, strategy, dataset, ctx, target):
     print('inspect graph statistic')
     assert isinstance(func, relay.Function)
     assert tvm.ir.structural_hash(func) == strategy.model_hash
-    topology = analyze_topology(func, hardware)
+    topology = generate_search_space(func, hardware)
     edge2bit = topology.edge2bit
     print('origin bits: \n{}'.format(strategy.bits))
 
