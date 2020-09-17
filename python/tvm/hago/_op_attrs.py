@@ -223,9 +223,7 @@ def identity_scale(input_scales):
     return scale0
 
 register_infer_scale("add", identity_scale)
-register_infer_scale("multiply", identity_scale)
 register_infer_scale("mean", identity_scale)
-register_infer_scale("subtract", identity_scale)
 register_infer_scale("nn.softmax", identity_scale)
 register_infer_scale("layout_transform", identity_scale)
 register_infer_scale("nn.pad", identity_scale)
