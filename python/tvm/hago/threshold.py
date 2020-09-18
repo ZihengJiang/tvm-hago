@@ -65,7 +65,6 @@ def threshold_estimate(graph, topology, stats, bits=None, rectify=True):
     cfg = current_qconfig()
     print('threshold method:')
     print(cfg.threshold_estimate_method)
-
     if cfg.threshold_estimate_method == 'global_scale':
         thresholds = [cfg.global_scale for _ in exprs]
     elif cfg.threshold_estimate_method == 'avg_range':
@@ -73,7 +72,11 @@ def threshold_estimate(graph, topology, stats, bits=None, rectify=True):
     elif cfg.threshold_estimate_method == 'power_of_two_range':
         thresholds = stats.power_of_two_range
     elif cfg.threshold_estimate_method == 'kl_estimate':
-        thresholds = [_find_scale_by_kl(np.array(arr)) for arr in stats.data]
+        thresholds = []
+        for idx in range(len(stats.data)):
+          samples = len(stats.data[idx])
+          arr = np.concatenate(stats.data[idx]).reshape(samples, -1)
+          thresholds.append(_find_scale_by_kl(arr))
     elif cfg.threshold_estimate_method.startswith('quantile_range:'):
         quantile = float(cfg.threshold_estimate_method[len('quantile_range:'):])
         assert(0 <= quantile and quantile <= 1, "quantile range must be in the range of [0, 1]")
