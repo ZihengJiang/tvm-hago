@@ -5,8 +5,8 @@ import numpy as np
 
 def create_hardware():
     hardware = hago.Hardware()
-    # hardware.add_op_desc('concatenate', hago.OpDesc(in_dtypes='float32', out_dtypes='float32'))
-    # hardware.add_op_desc('nn.dense', hago.OpDesc(in_dtypes='int8', out_dtypes='int32'))
+    hardware.add_op_desc('concatenate', hago.OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.dense', hago.OpDesc(in_dtypes='int8', out_dtypes='int32'))
     hardware.add_op_desc('nn.conv2d', hago.OpDesc(in_dtypes='int8', out_dtypes='int32'))
     return hardware
 
@@ -19,15 +19,16 @@ def target_and_ctx(device):
         ctx = tvm.gpu(1)
     return target, ctx
 
-def test_dense(ishape=(32, 16), wshape=(10, 16), batch_num=3, device='cpu'):
+def test_dense(ishape=(8, 16), wshape=(10, 16), batch_num=5, device='cpu'):
     target, ctx = target_and_ctx(device)
     data = relay.var('data', shape=ishape)
     weight = relay.var('weight', shape=wshape)
     out = relay.nn.dense(data, weight)
     func = relay.Function([data, weight], out)
 
-    weight_np = np.random.rand(*wshape).astype('float32')
-
+    # weight_np = np.random.rand(*wshape).astype('float32')
+    weight_np = np.random.normal(size=wshape).astype('float32')
+    
     # generate dataset
     batches = []
     for i in range(batch_num):
@@ -61,8 +62,8 @@ def test_concatenate(ishape=(8, 16), wshape=(10, 16), batch_num=3, device='cpu')
     out = relay.nn.dense(concat, weight1)
     func = relay.Function([data_a, data_b, data_c, data_d, weight0, weight1], out)
 
-    weight0_np = np.random.rand(*w0shape).astype('float32')
-    weight1_np = np.random.rand(*w1shape).astype('float32')
+    weight0_np = np.random.normal(size=w0shape).astype('float32')
+    weight1_np = np.random.normal(size=w1shape).astype('float32')
 
     # generate dataset
     batches = []
@@ -107,24 +108,6 @@ def test_conv2d(ishape=(1,3,224,224), wshape=(32,3,5,5), batch_num=5, device='cp
     params = {'weight': tvm.nd.array(weight_np)}
     return func, params, dataset
 
-def test_mobilenet(ishape=(1,3,224,224), batch_num=1, device='cpu'):
-    target, ctx = target_and_ctx(device)
-    from tvm.relay import testing
-    mod, params = testing.mobilenet.get_workload()
-    func = mod['main']
-
-    # generate dataset
-    batches = []
-    for i in range(batch_num):
-        data_np = np.random.rand(*ishape).astype('float32')
-        ex = relay.create_executor("debug", ctx=ctx, target=target)
-        out_np = ex.evaluate(func)(data_np, **params).asnumpy()
-        pred_np = np.argmax(out_np, axis=1)
-        batches.append({'data': tvm.nd.array(data_np), 'label': tvm.nd.array(pred_np)})
-    dataset = hago.CalibrationDataset(batches)
-
-    return func, params, dataset
-
 def check_results(func, params, dataset, device='cpu'):
     original_func = func
     target, ctx = target_and_ctx(device)
@@ -158,7 +141,7 @@ def check_results(func, params, dataset, device='cpu'):
 
 if __name__ == '__main__':
     device = 'cpu'
-    func, params, dataset = test_conv2d(device=device)
+    func, params, dataset = test_dense(device=device)
     print('original model:')
     print(func)
     check_results(func, params, dataset, device)
