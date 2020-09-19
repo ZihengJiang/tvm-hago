@@ -6,6 +6,7 @@ import numpy as np
 def create_hardware():
     hardware = hago.Hardware()
     hardware.add_op_desc('concatenate', hago.OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('add', hago.OpDesc(in_dtypes='int8', out_dtypes='int32'))
     hardware.add_op_desc('nn.dense', hago.OpDesc(in_dtypes='int8', out_dtypes='int32'))
     hardware.add_op_desc('nn.conv2d', hago.OpDesc(in_dtypes='int8', out_dtypes='int32'))
     return hardware
@@ -108,6 +109,28 @@ def test_conv2d(ishape=(1,3,224,224), wshape=(32,3,5,5), batch_num=5, device='cp
     params = {'weight': tvm.nd.array(weight_np)}
     return func, params, dataset
 
+def test_add(ishape=(32,32), wshape=(32,32), batch_num=5, device='cpu'):
+    target, ctx = target_and_ctx(device)
+    data = relay.var('data', shape=ishape)
+    weight = relay.var('weight', shape=wshape)
+    out = data + weight
+    func = relay.Function([data, weight], out)
+
+    weight_np = np.random.normal(size=wshape).astype('float32')
+
+    # generate dataset
+    batches = []
+    for i in range(batch_num):
+        data_np = np.random.rand(*ishape).astype('float32')
+        ex = relay.create_executor("debug", ctx=ctx, target=target)
+        out_np = ex.evaluate(func)(data_np, weight_np).asnumpy()
+        pred_np = np.argmax(out_np, axis=1)
+        batches.append({'data': tvm.nd.array(data_np), 'label': tvm.nd.array(pred_np)})
+    dataset = hago.CalibrationDataset(batches)
+
+    params = {'weight': tvm.nd.array(weight_np)}
+    return func, params, dataset
+
 def check_results(func, params, dataset, device='cpu'):
     original_func = func
     target, ctx = target_and_ctx(device)
@@ -141,7 +164,7 @@ def check_results(func, params, dataset, device='cpu'):
 
 if __name__ == '__main__':
     device = 'cpu'
-    func, params, dataset = test_dense(device=device)
+    func, params, dataset = test_add(device=device)
     print('original model:')
     print(func)
     check_results(func, params, dataset, device)
