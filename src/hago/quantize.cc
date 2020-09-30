@@ -52,8 +52,9 @@ bool SimulatedQuantizeRel(const Array<Type>& types,
   CHECK(data != nullptr);
   // CHECK_NE(data->shape.size(), 0) << "Input shape cannot be empty";
 
-  reporter->Assign(types[1], TensorType({}, DataType::Float(32)));     // in_scale
-  reporter->Assign(types[2], TensorType({}, DataType::Float(32)));     // out_scale
+  // Skip for supporting per-channel scales
+  // reporter->Assign(types[1], TensorType({}, DataType::Float(32)));     // in_scale
+  // reporter->Assign(types[2], TensorType({}, DataType::Float(32)));     // out_scale
   reporter->Assign(types[3], TensorType({}, DataType::Float(32)));     // clip_min
   reporter->Assign(types[4], TensorType({}, DataType::Float(32)));     // clip_max
   reporter->Assign(types[5], types[0]);                                // output
@@ -61,7 +62,7 @@ bool SimulatedQuantizeRel(const Array<Type>& types,
 }
 
 
-RELAY_REGISTER_OP("hago.simulated_quantize")
+RELAY_REGISTER_OP("nn.simulated_quantize")
 .describe(R"code(simulated quantize op)code" TVM_ADD_FILELINE)
 .set_num_inputs(5)
 .add_argument("data", "Tensor", "The input data.")
@@ -78,17 +79,19 @@ Expr create_simulated_quantize(Expr data,
                                Expr in_scale, Expr out_scale,
                                Expr clip_min, Expr clip_max,
                                DataType in_dtype, DataType out_dtype,
-                               bool sign, std::string rounding) {
+                               bool sign, std::string rounding,
+                               Optional<Integer> axis) {
   auto attrs = make_object<SimulatedQuantizeAttrs>();
   attrs->in_dtype = in_dtype;
   attrs->out_dtype = out_dtype;
   attrs->sign = sign;
   attrs->rounding = rounding;
-  static const Op& op = Op::Get("hago.simulated_quantize");
+  attrs->axis = axis;
+  static const Op& op = Op::Get("nn.simulated_quantize");
   return relay::Call(op, {data, in_scale, out_scale, clip_min, clip_max}, Attrs(attrs));
 }
 
-TVM_REGISTER_GLOBAL("hago._quantize.simulated_quantize").set_body_typed(create_simulated_quantize);
+TVM_REGISTER_GLOBAL("hago.quantize.simulated_quantize").set_body_typed(create_simulated_quantize);
 
 
 /*! \brief Entry to hold the BuildConfig context stack. */
@@ -140,13 +143,13 @@ TVM_STATIC_IR_FUNCTOR(ReprPrinter, vtable)
 });
 
 
-TVM_REGISTER_GLOBAL("hago._quantize._GetCurrentQConfig")
+TVM_REGISTER_GLOBAL("hago.quantize._GetCurrentQConfig")
 .set_body_typed(QConfig::Current);
 
-TVM_REGISTER_GLOBAL("hago._quantize._EnterQConfigScope")
+TVM_REGISTER_GLOBAL("hago.quantize._EnterQConfigScope")
 .set_body_typed(QConfig::EnterQConfigScope);
 
-TVM_REGISTER_GLOBAL("hago._quantize._ExitQConfigScope")
+TVM_REGISTER_GLOBAL("hago.quantize._ExitQConfigScope")
 .set_body_typed(QConfig::ExitQConfigScope);
 
 OpDesc OpDescObj::make(Array<Type> in_types,
@@ -157,7 +160,7 @@ OpDesc OpDescObj::make(Array<Type> in_types,
   return OpDesc(n);
 }
 
-TVM_REGISTER_GLOBAL("hago._make.OpDesc")
+TVM_REGISTER_GLOBAL("hago.make.OpDesc")
 .set_body_typed(OpDescObj::make);
 
 }  // namespace hago

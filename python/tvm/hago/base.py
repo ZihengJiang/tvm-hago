@@ -18,8 +18,8 @@
 """Automatic quantization toolkit."""
 from __future__ import absolute_import
 
-from . import _quantize
 from .. import relay
+from . import _ffi_api
 
 import tvm._ffi
 from tvm.runtime import Object
@@ -84,11 +84,11 @@ class QConfig(Object):
 
     def __enter__(self):
         # pylint: disable=protected-access
-        _quantize._EnterQConfigScope(self)
+        _ffi_api._EnterQConfigScope(self)
         return self
 
     def __exit__(self, ptype, value, trace):
-        _quantize._ExitQConfigScope()
+        _ffi_api._ExitQConfigScope()
 
     def __setattr__(self, name, value):
         if name in QConfig._node_defaults:
@@ -99,7 +99,7 @@ class QConfig(Object):
 
 def current_qconfig():
     """Get the current quantization configuration."""
-    return _quantize._GetCurrentQConfig()
+    return _ffi_api._GetCurrentQConfig()
 
 
 def qconfig(**kwargs):
@@ -196,7 +196,7 @@ def build_node_mapping(sgraph, graph):
     fvisit_collect_nodes.nodes = []
 
     def fvisit_collect_snodes(e):
-        if isinstance(e, relay.Call) and e.op.name == 'hago.simulated_quantize':
+        if isinstance(e, relay.Call) and e.op.name == 'nn.simulated_quantize':
             node = e.args[0]
             if node not in fvisit_collect_snodes.set:
                 # avoid multi-refer

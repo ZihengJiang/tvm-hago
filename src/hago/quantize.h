@@ -39,16 +39,19 @@ struct SimulatedQuantizeAttrs : public tvm::AttrsNode<SimulatedQuantizeAttrs> {
   DataType out_dtype;
   bool sign;
   std::string rounding;
+  Optional<Integer> axis;
 
   TVM_DECLARE_ATTRS(SimulatedQuantizeAttrs, "hago.SimulatedQuantizeAttrs") {
     TVM_ATTR_FIELD(in_dtype)
-      .describe("in data type");
+      .describe("input data type");
     TVM_ATTR_FIELD(out_dtype)
-      .describe("out data type");
+      .describe("output data type");
     TVM_ATTR_FIELD(sign).set_default(true)
         .describe("whether to use signed data type.");
     TVM_ATTR_FIELD(rounding).set_default("round")
         .describe("rounding mode. Can be 'floor', 'ceil', 'round'");
+    TVM_ATTR_FIELD(axis)
+      .describe("specify axis for per-channel quantization.");
   }
 };
 

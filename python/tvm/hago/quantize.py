@@ -18,7 +18,7 @@
 """Automatic quantization toolkit."""
 from __future__ import absolute_import
 
-from . import _quantize
+from . import _ffi_api
 from .. import relay
 from .base import *
 from .hardware import *
@@ -38,6 +38,24 @@ SimulatedQuantizeParams = namedtuple("SimulatedQuantizeParams", ['in_scale',
                                                                  'in_dtype',
                                                                  'out_dtype',
                                                                  ])
+
+
+def simulated_quantize(data,
+                       in_scale,
+                       out_scale,
+                       clip_min,
+                       clip_max,
+                       in_dtype,
+                       out_dtype,
+                       axis=None):
+    in_scale = relay.const(in_scale, dtype='float32')
+    out_scale = relay.const(out_scale, dtype='float32')
+    clip_min = relay.const(clip_min, dtype='float32')
+    clip_max = relay.const(clip_max, dtype='float32')
+    new_node = _ffi_api.simulated_quantize(data, in_scale, out_scale,
+        clip_min, clip_max, in_dtype, out_dtype, True, "round", axis)
+    return new_node
+
 
 def select_desc(graph, hardware, topology, bits):
     def select(node, in_bits, hardware):
@@ -220,7 +238,7 @@ class Simulator(tvm.relay.ExprMutator):
         clip_max = relay.var('clip_max' + str(self._name_cnt), 'float32')
         self._name_cnt += 1
         self.internal_param_nodes.append((in_scale, out_scale, clip_min, clip_max))
-        new_node = _quantize.simulated_quantize(input_node,
+        new_node = _ffi_api.simulated_quantize(input_node,
                                                in_scale,
                                                out_scale,
                                                clip_min,
@@ -279,15 +297,15 @@ class Simulator(tvm.relay.ExprMutator):
         clip_max = relay.var('clip_max' + str(self._name_cnt), 'float32')
         self._name_cnt += 1
         self.output_param_nodes.append((in_scale, out_scale, clip_min, clip_max))
-        new_body = _quantize.simulated_quantize(new_fn.body,
-                                                in_scale,
-                                                out_scale,
-                                                clip_min,
-                                                clip_max,
-                                                in_dtype,
-                                                DataType('float32'),
-                                                True,
-                                                "round")
+        new_body = _ffi_api.simulated_quantize(new_fn.body,
+                                               in_scale,
+                                               out_scale,
+                                               clip_min,
+                                               clip_max,
+                                               in_dtype,
+                                               DataType('float32'),
+                                               True,
+                                               "round")
 
         new_params = relay.analysis.free_vars(new_body)
         return relay.Function(
@@ -417,7 +435,7 @@ class Realizer(tvm.relay.ExprMutator):
 
     def visit_call(self, node):
         new_node = super().visit_call(node)
-        if node.op.name == "hago.simulated_quantize":
+        if node.op.name == "nn.simulated_quantize":
             print('---------')
             print('simulated_quantize({})'.format(node_str(node.args[0], self._snode2idx)))
             new_node = self._realize_simulated_quantize(new_node)

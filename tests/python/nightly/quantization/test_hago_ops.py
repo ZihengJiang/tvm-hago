@@ -137,9 +137,8 @@ def check_results(func, params, dataset, device='cpu'):
     # prepared by user
     hardware = create_hardware()
     
-    qconfig = hago.qconfig(skip_conv_layers=[0],
-                           log_file='temp.log',
-                           threshold_estimate_method="kl_estimate")
+    qconfig = hago.qconfig(log_file='temp.log',
+                           threshold_estimate_method="avg_range")
     with qconfig:
         func = hago.prerequisite_optimize(func, params)
         print('after optimize')
@@ -157,10 +156,11 @@ def check_results(func, params, dataset, device='cpu'):
         print(quantized_graph)
 
     input_data = [ {**data, **params} for data in dataset.batches ]
-    expected = hago.base.evaluate(original_func, input_data)
-    quantized_output = hago.base.evaluate(quantized_graph, input_data)
+    expected = hago.base.evaluate(original_func, input_data)[0]
+    quantized_output = hago.base.evaluate(quantized_graph, input_data)[0]
 
-    tvm.testing.assert_allclose(expected, quantized_output, rtol=0.05)
+    for exp_out, qtz_out in zip(expected, quantized_output):
+        hago.analysis.compare(exp_out, qtz_out)
 
 if __name__ == '__main__':
     device = 'cpu'

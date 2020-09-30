@@ -17,7 +17,6 @@
 from __future__ import absolute_import
 
 from .base import *
-from . import _quantize
 from .topology import Topology, analyze_topology
 from .quantize import create_quantizer
 from .record import Strategy

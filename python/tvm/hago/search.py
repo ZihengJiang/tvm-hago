@@ -19,7 +19,7 @@
 from __future__ import absolute_import
 
 from .base import * 
-from . import _quantize
+from . import _ffi_api
 from . import quantize as qtz
 from .. import relay
 from .threshold import threshold_estimate
