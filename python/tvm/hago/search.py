@@ -348,7 +348,8 @@ class Tuner(object):
         self.dataset = dataset
         self.ctx = ctx
         self.target = target
-        self.stats = analysis.collect_stats(graph, dataset, ctx, target)
+        self.stats = analysis.collect_stats(graph, self.topology,
+            dataset, ctx, target)
 
         num_trials = 0
         while num_trials < self.max_trials:
