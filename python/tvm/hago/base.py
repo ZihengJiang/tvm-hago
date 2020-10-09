@@ -35,12 +35,12 @@ class QConfig(object):
     def __init__(self,
                  threshold_estimate_method="avg_range",
                  global_scale=8.0,
-                 per_channel_scale_axis=None,
+                 is_channel_quantize=True,
                  round_scale_to_pot=False,
                  log_file=".quantize_strategy_search.log"):
         self.threshold_estimate_method = threshold_estimate_method
         self.global_scale = global_scale
-        self.per_channel_scale_axis = per_channel_scale_axis
+        self.is_channel_quantize = is_channel_quantize
         self.round_scale_to_pot = round_scale_to_pot
         self.log_file = log_file
 
