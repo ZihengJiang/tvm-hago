@@ -90,14 +90,6 @@ def main():
         qconfig = hago.qconfig(round_scale_to_pot=True,
                                log_file='temp.log')
         quantized_func = quantize_hago(fp32_mod, params, calib_dataset, qconfig)
-        print('quantized graph')
-        print(quantized_func)
-        from tvm.relay import qnn 
-        mod = qnn.transform.CanonicalizeOps()(quantized_func)
-        relay_func = mod['main']
-        print('relay quantized graph')
-        print(relay_func)
-        raise ValueError
         acc = eval_acc(quantized_func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
         print("quantized_accuracy", model_name, acc, sep=',')
 
