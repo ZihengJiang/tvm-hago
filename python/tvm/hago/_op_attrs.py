@@ -255,50 +255,7 @@ register_infer_scale("nn.global_avg_pool2d", identity_scale)
 register_infer_scale("nn.adaptive_avg_pool2d", identity_scale)
 register_infer_scale("nn.batch_flatten", identity_scale)
 
-# threshold rectify function registered for ops
-
-def register_threshold_rectify(op_name, frectify=None, level=10):
-    return tvm.ir.register_op_attr(op_name, "FHagoRectify", frectify, level)
-
-@register_threshold_rectify("add")
-def unify_scale(input_bits, output_bits, input_thresholds, output_thresholds):
-    sign_bit = 1
-    # convert from tvm object to POD
-    ibits = [bit.value for bit in input_bits]
-    # FIXME - Uncommenting next line can cause failures when add is followed by a non-quantized op.
-    # Exmaple is add --> clip and model is MXNet mobilenetv2
-    # obits = [32 if bit is None else bit.value for bit in output_bits]
-    itholds = [thold.value for thold in input_thresholds]
-    otholds = [thold.value for thold in output_thresholds]
-
-    # choose scale of the one with max threshold
-    idx = np.argmax(itholds)
-    chosen_thold = itholds[idx]
-    chosen_bit = ibits[idx]
-    unified_scale = itholds[idx] / (2 ** (ibits[idx] - sign_bit))
-
-    print('  in bits   : {}'.format(ibits))
-    # print('  out bits  : {}'.format(obits))
-    print('  in tholds : {}'.format(', '.join(["{:.3f}".format(thold) for thold in itholds])))
-    print('  out tholds: {}'.format(', '.join(["{:.3f}".format(thold) for thold in otholds])))
-    print('  choose unifed scale {:.3e} for op add'.format(unified_scale))
-    new_tholds = []
-    for i, bit in enumerate(ibits):
-        # integer_range = 2 ** (bit - sign_bit) - 1
-        # thold = integer_range * unified_scale
-        thold = (2 ** (bit - chosen_bit)) * chosen_thold 
-        print('  rectify threshold from {} to {} for op add'.format(itholds[i], thold))
-        new_tholds.append(thold)
-    for thold in otholds:
-        new_tholds.append(thold)
-
-    print('  new tholds: {}'.format(', '.join(["{:.3f}".format(thold) for thold in new_tholds])))
-
-    return new_tholds
-
-
 # realize registration for ops
-
 def register_realize(op_name, frealize=None, level=10):
     return tvm.ir.register_op_attr(op_name, "FHagoRealize", frealize, level)
 
@@ -332,3 +289,16 @@ def realize_conv2d(node, in_types, out_types):
     attrs_dict['out_dtype'] = DataType(out_types[0])
     attrs = tvm.ir.make_node("relay.attrs.Conv2DAttrs", **attrs_dict)
     return relay.Call(node.op, node.args, attrs, node.type_args)
+
+def register_rectify_scale(op_name, frectify_scale=None, level=10):
+    return tvm.ir.register_op_attr(op_name, "FHagoRectifyScale", frectify_scale, level)
+
+@register_rectify_scale("add")
+def add_rectify_scale(args, old_in_scales, old_out_scales):
+    new_scale = old_out_scales[0] if old_out_scales[0] > old_out_scales[1] else old_out_scales[1]
+    return [new_scale, new_scale]
+
+@register_rectify_scale("nn.relu")
+def relu_rectify_scale(args, old_in_scales, old_out_scales):
+    # Skip the requantize before relu
+    return [old_in_scales[0]]
