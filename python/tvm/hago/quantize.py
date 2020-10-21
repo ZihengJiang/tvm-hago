@@ -556,10 +556,6 @@ class Realizer(tvm.relay.ExprMutator):
             data = relay.clip(data, clip_min, clip_max)
             data = relay.cast(data, out_dtype)
             return data
-        elif in_scale == out_scale and in_dtype == out_dtype:
-            # do nothing
-            # TODO(ziheng) whether to clip?
-            return data
         else:
             # requantize
             dtype = in_dtype

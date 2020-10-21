@@ -27,6 +27,7 @@ import math
 import functools
 import numpy as np
 import logging
+from .base import to_scalar
 
 RUNTIME_DEBUG = False
 
@@ -132,7 +133,7 @@ def check_overflow(data, in_dtype, output):
     if 'float' in in_dtype:
         # skip overflow check for float input dtype
         data.copyto(output)
-        return 
+        return
 
     if not allclose(arr, data.asnumpy(), rtol=1e-03, atol=1.0):
         logging.warning('overflow happens')
@@ -238,7 +239,7 @@ register_infer_scale("nn.dense", product_scale)
 
 def identity_scale(input_scales):
     input_scales = [scale.value for scale in input_scales]
-    scale0 = input_scales[0] 
+    scale0 = input_scales[0]
     for scale in input_scales:
         assert math.isclose(scale, scale, rel_tol=1e-6)
     return scale0
@@ -249,6 +250,7 @@ register_infer_scale("nn.softmax", identity_scale)
 register_infer_scale("layout_transform", identity_scale)
 register_infer_scale("nn.pad", identity_scale)
 register_infer_scale("nn.relu", identity_scale)
+register_infer_scale("clip", identity_scale)
 register_infer_scale("nn.max_pool2d", identity_scale)
 register_infer_scale("nn.avg_pool2d", identity_scale)
 register_infer_scale("nn.global_avg_pool2d", identity_scale)
@@ -290,6 +292,29 @@ def realize_conv2d(node, in_types, out_types):
     attrs = tvm.ir.make_node("relay.attrs.Conv2DAttrs", **attrs_dict)
     return relay.Call(node.op, node.args, attrs, node.type_args)
 
+@register_realize("clip")
+def realize_addition(node, in_types, out_types):
+    lhs = node.args[0]
+    assert lhs.op.name == 'qnn.requantize'
+    scale, zero_point = lhs.args[3], lhs.args[4]
+    scale_val = to_scalar(scale)
+    zero_point_val = to_scalar(zero_point)
+    dtype = lhs.attrs.out_dtype
+
+    clip_min = node.attrs.a_min
+    clip_max = node.attrs.a_max
+
+    # Quantize a float value to an quantized integer value
+    quantize = lambda x: float(int(round(x / scale_val)) + zero_point_val)
+
+    # Get min/max of the output dtype. This will be used to ensure that clip a_min/a_max are not
+    # beyond the dtype range.
+    qmin = float(tvm.tir.op.min_value(dtype).value)
+    qmax = float(tvm.tir.op.max_value(dtype).value)
+    return relay.clip(lhs,
+                      a_min=max(qmin, quantize(clip_min)),
+                      a_max=min(qmax, quantize(clip_max)))
+
 def register_rectify_scale(op_name, frectify_scale=None, level=10):
     return tvm.ir.register_op_attr(op_name, "FHagoRectifyScale", frectify_scale, level)
 
@@ -298,7 +323,10 @@ def add_rectify_scale(args, old_in_scales, old_out_scales):
     new_scale = old_out_scales[0] if old_out_scales[0] > old_out_scales[1] else old_out_scales[1]
     return [new_scale, new_scale]
 
-@register_rectify_scale("nn.relu")
-def relu_rectify_scale(args, old_in_scales, old_out_scales):
+def return_input_scale(args, old_in_scales, old_out_scales):
     # Skip the requantize before relu
     return [old_in_scales[0]]
+
+register_rectify_scale("nn.relu", return_input_scale)
+register_rectify_scale("clip", return_input_scale)
+
