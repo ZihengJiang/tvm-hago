@@ -450,6 +450,7 @@ class Simulator(tvm.relay.ExprMutator):
                                                     in_dtype, out_dtype)
                     print('  {}'.format(param))
                     internal_params.append(param)
+                    arg_idx += 1
                 return
             if isinstance(node, relay.Function):
                 # handle output of function

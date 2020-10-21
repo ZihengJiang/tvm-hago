@@ -293,13 +293,13 @@ def realize_conv2d(node, in_types, out_types):
     return relay.Call(node.op, node.args, attrs, node.type_args)
 
 @register_realize("clip")
-def realize_addition(node, in_types, out_types):
-    lhs = node.args[0]
-    assert lhs.op.name == 'qnn.requantize'
-    scale, zero_point = lhs.args[3], lhs.args[4]
+def realize_clip(node, in_types, out_types):
+    data = node.args[0]
+    assert data.op.name == 'qnn.requantize'
+    scale, zero_point = data.args[3], data.args[4]
     scale_val = to_scalar(scale)
     zero_point_val = to_scalar(zero_point)
-    dtype = lhs.attrs.out_dtype
+    dtype = data.attrs.out_dtype
 
     clip_min = node.attrs.a_min
     clip_max = node.attrs.a_max
@@ -311,7 +311,7 @@ def realize_addition(node, in_types, out_types):
     # beyond the dtype range.
     qmin = float(tvm.tir.op.min_value(dtype).value)
     qmax = float(tvm.tir.op.max_value(dtype).value)
-    return relay.clip(lhs,
+    return relay.clip(data,
                       a_min=max(qmin, quantize(clip_min)),
                       a_max=min(qmax, quantize(clip_max)))
 
