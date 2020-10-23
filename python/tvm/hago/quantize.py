@@ -571,12 +571,9 @@ class Realizer(tvm.relay.ExprMutator):
 
     def _realize_simulated_quantize(self, node):
         data, in_scale, out_scale, clip_min, clip_max = node.args
-        print(data)
-        print(node)
         attrs = node.attrs
         # in_scale = to_scalar(in_scale)
         # out_scale = to_scalar(out_scale)
-        print(attrs)
         in_dtype = attrs.in_dtype
         out_dtype = attrs.out_dtype
         axis = attrs.axis

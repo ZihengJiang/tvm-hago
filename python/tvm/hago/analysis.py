@@ -82,7 +82,6 @@ class Stats(object):
                     out_edges = self.node2edges[node]
                     assert len(out_edges) == 1
                     op_node = out_edges[0][1]
-                    print("Layout ", idx, op_node.op.name, layout)
                     if is_channel_quantized and op_node.op.name in ['nn.conv2d']:
                         # per channel scales
                         assert layout in ("OIHW", "HWIO")

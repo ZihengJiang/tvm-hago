@@ -53,7 +53,7 @@ class QConfig(object):
 
     def per_channel_ops(self):
         # TODO(team): more flexible
-        return ['nn.dense', 'nn.conv2d']
+        return ['nn.conv2d']
 
 
 
@@ -171,7 +171,7 @@ def list_in_nodes(node):
         if isinstance(arg, (relay.Var, relay.Constant, relay.Call)):
             yield arg
         elif isinstance(arg, relay.expr.Tuple):
-            for src in arg:
+            for src in arg.fields:
                 yield src
         else:
             raise ValueError

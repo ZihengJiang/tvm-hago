@@ -295,25 +295,26 @@ def realize_conv2d(node, in_types, out_types):
 @register_realize("clip")
 def realize_clip(node, in_types, out_types):
     data = node.args[0]
-    assert data.op.name == 'qnn.requantize'
-    scale, zero_point = data.args[3], data.args[4]
-    scale_val = to_scalar(scale)
-    zero_point_val = to_scalar(zero_point)
-    dtype = data.attrs.out_dtype
+    if data.op.name == 'qnn.requantize':
+        scale, zero_point = data.args[3], data.args[4]
+        scale_val = to_scalar(scale)
+        zero_point_val = to_scalar(zero_point)
+        dtype = data.attrs.out_dtype
 
-    clip_min = node.attrs.a_min
-    clip_max = node.attrs.a_max
+        clip_min = node.attrs.a_min
+        clip_max = node.attrs.a_max
 
-    # Quantize a float value to an quantized integer value
-    quantize = lambda x: float(int(round(x / scale_val)) + zero_point_val)
+        # Quantize a float value to an quantized integer value
+        quantize = lambda x: float(int(round(x / scale_val)) + zero_point_val)
 
-    # Get min/max of the output dtype. This will be used to ensure that clip a_min/a_max are not
-    # beyond the dtype range.
-    qmin = float(tvm.tir.op.min_value(dtype).value)
-    qmax = float(tvm.tir.op.max_value(dtype).value)
-    return relay.clip(data,
-                      a_min=max(qmin, quantize(clip_min)),
-                      a_max=min(qmax, quantize(clip_max)))
+        # Get min/max of the output dtype. This will be used to ensure that clip a_min/a_max are not
+        # beyond the dtype range.
+        qmin = float(tvm.tir.op.min_value(dtype).value)
+        qmax = float(tvm.tir.op.max_value(dtype).value)
+        return relay.clip(data,
+                          a_min=max(qmin, quantize(clip_min)),
+                          a_max=min(qmax, quantize(clip_max)))
+    return node
 
 def register_rectify_scale(op_name, frectify_scale=None, level=10):
     return tvm.ir.register_op_attr(op_name, "FHagoRectifyScale", frectify_scale, level)
@@ -330,3 +331,14 @@ def return_input_scale(args, old_in_scales, old_out_scales):
 register_rectify_scale("nn.relu", return_input_scale)
 register_rectify_scale("clip", return_input_scale)
 
+
+def register_select_desc(op_name, frectify_scale=None, level=10):
+    return tvm.ir.register_op_attr(op_name, "FHagoSelectDesc", frectify_scale, level)
+
+@register_select_desc("add")
+def add_select_desc(node):
+    if len(node.args[0].checked_type.shape) != 4:
+        return ['float32', 'float32']
+    if isinstance(node.args[1], relay.Constant) and node.args[0].checked_type.shape[2].value == 1:
+        return ['float32', 'float32']
+    return None
