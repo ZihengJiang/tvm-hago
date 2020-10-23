@@ -45,7 +45,7 @@ class Stats(object):
             node_kind = self.node2kinds[node]
             node_layout = self.node2layouts[node]
             if node_kind in (NodeKind.Input, NodeKind.Activation):
-                flatten_data = (np.concatenate(batched_data), node_layout)
+                flatten_data = (batched_data, node_layout)
             elif node_kind == NodeKind.Weight:
                 flatten_data = (batched_data[0], node_layout)
             else:
@@ -61,8 +61,11 @@ class Stats(object):
         return self.data[idx]
 
     def _calculate_avg_range(self, arr):
-        num_samples = arr.shape[0]
-        arr = np.reshape(arr, (num_samples, -1))
+        # TODO - For some reason, averaging across different batches gives better accuracy compared
+        # to averaging across all the images. One reason might be that there might be an outlier
+        # causing the avg numbers to go up, but that might be absent in averaging across batches.
+        samples = len(arr)
+        arr = np.concatenate(arr).reshape(samples, -1)
         avg_min = np.average(np.min(arr, axis=1))
         avg_max = np.average(np.max(arr, axis=1))
         arange = np.amax([np.abs(avg_min), np.abs(avg_max)])
