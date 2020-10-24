@@ -70,7 +70,7 @@ def main():
     val_path = '/home/ubuntu/tensorflow_datasets/downloads/manual/imagenet2012/val.rec'
     if args.run_all:
         models = ['resnet50_v1', 'inceptionv3', 'mobilenetv2_1.0', 'mobilenet1.0', 'resnet18_v1',
-                  'densenet161', 'vgg16']
+                  'vgg16', 'densenet161']
     else:
         models = [args.model]
     for model_name in models:
