@@ -339,6 +339,9 @@ def register_select_desc(op_name, frectify_scale=None, level=10):
 def add_select_desc(node):
     if len(node.args[0].checked_type.shape) != 4:
         return ['float32', 'float32']
+    if len(node.args[1].checked_type.shape) == 0:
+        # Addition by a scalar
+        return ['float32', 'float32']
     if isinstance(node.args[1], relay.Constant) and node.args[0].checked_type.shape[2].value == 1:
         return ['float32', 'float32']
     return None
