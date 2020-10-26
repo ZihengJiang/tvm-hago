@@ -167,20 +167,28 @@ class Topology(object):
 
         for (src, node), idx in edge2idx.items():
             if isinstance(src, relay.Constant) and node.op.name in qconfig.per_channel_ops():
-                # Find the output scale size
-                src_layout = self._node2layout[src]
-                assert src_layout in ('OIHW', 'HWIO'), src_layout
-                axis = src_layout.find('O')
-                out_scale_shape[idx] = (node2shape[src][axis],)
 
-                # Find the input scale size for fan outs
-                out_edges = self.node2edges()[node]
-                node_layout = self._node2layout[node]
-                assert node_layout in ('NCHW', 'NHWC'), node_layout
-                axis = node_layout.find('C')
-                for oedge in out_edges:
-                    assert oedge[0] == node
-                    in_scale_shape[edge2idx[oedge]] = (node2shape[node][axis],)
+                if not self.is_quantized_node(node):
+                    out_scale_shape[idx] = ()
+                    out_edges = self.node2edges()[node]
+                    for oedge in out_edges:
+                        assert oedge[0] == node
+                        in_scale_shape[edge2idx[oedge]] = ()
+                else:
+                    # Find the output scale size
+                    src_layout = self._node2layout[src]
+                    assert src_layout in ('OIHW', 'HWIO'), src_layout
+                    axis = src_layout.find('O')
+                    out_scale_shape[idx] = (node2shape[src][axis],)
+
+                    # Find the input scale size for fan outs
+                    out_edges = self.node2edges()[node]
+                    node_layout = self._node2layout[node]
+                    assert node_layout in ('NCHW', 'NHWC'), node_layout
+                    axis = node_layout.find('C')
+                    for oedge in out_edges:
+                        assert oedge[0] == node
+                        in_scale_shape[edge2idx[oedge]] = (node2shape[node][axis],)
 
         return list(zip(in_scale_shape, out_scale_shape))
 

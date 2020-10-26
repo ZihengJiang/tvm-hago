@@ -345,3 +345,12 @@ def add_select_desc(node):
     if isinstance(node.args[1], relay.Constant) and node.args[0].checked_type.shape[2].value == 1:
         return ['float32', 'float32']
     return None
+
+
+@register_select_desc("nn.conv2d")
+def conv2d_select_desc(node):
+    attrs = node.attrs
+    if attrs.kernel_layout == "OIHW" and attrs.groups != 1 and attrs.groups != attrs.channels:
+        # Disable quantization for grouped convolution that have depth multiplier > 1
+        return ['float32', 'float32']
+    return None
