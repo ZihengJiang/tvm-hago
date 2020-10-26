@@ -337,12 +337,18 @@ def register_select_desc(op_name, frectify_scale=None, level=10):
 
 @register_select_desc("add")
 def add_select_desc(node):
+    # Disbale quantization for add operator for some corner cases
     if len(node.args[0].checked_type.shape) != 4:
+        # Disable quantization when the first input is not 4D
         return ['float32', 'float32']
     if len(node.args[1].checked_type.shape) == 0:
-        # Addition by a scalar
+        # Disable quantization when the second input is a scalar
         return ['float32', 'float32']
-    if isinstance(node.args[1], relay.Constant) and node.args[0].checked_type.shape[2].value == 1:
+
+    data_height = node.args[0].checked_type.shape[2].value
+    data_weight = node.args[0].checked_type.shape[3].value
+    if isinstance(node.args[1], relay.Constant) and data_height == 1 and data_weight == 1:
+        # Disable quantization when it is bias_add but the h and w of the data is 1
         return ['float32', 'float32']
     return None
 
