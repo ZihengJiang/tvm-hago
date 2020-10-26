@@ -319,7 +319,22 @@ class Simulator(tvm.relay.ExprMutator):
                     new_arg = old2new[src]
                     eidx = self._edge2idx[(src, node)]
                     iscale_shape, oscale_shape = self.scale_shape[eidx]
+                    assert not (oscale_shape != () and iscale_shape != ()), \
+                            "Both input and output scale cannot be tensors simultaneously"
+
                     axis = None
+                    qconfig = current_qconfig()
+                    use_channel_quantize = qconfig.use_channel_quantize
+                    assert oscale_shape == (), "Tuple inputs can't have tensor output scale"
+                    if iscale_shape != ():
+                        # This is coming from the per channel quantized operator output, like conv2d
+                        # output is per-channel quantized.
+                        assert use_channel_quantize
+                        assert src.op.name in qconfig.per_channel_ops()
+                        data_layout = self._node2layouts[src]
+                        assert data_layout in ('NCHW', 'NHWC')
+                        axis = self._node2channel_axis[src]
+
                     sim_arg.append(self.create_simulated_quantize(new_arg,
                                                                   in_dtype,
                                                                   out_dtype,
@@ -345,7 +360,7 @@ class Simulator(tvm.relay.ExprMutator):
                 assert isinstance(out_scale_node, relay.Var)
                 oshape = tuple(out_scale_node.type_annotation.shape)
                 if oshape != ():
-                    in_scale_shape = oshape 
+                    in_scale_shape = oshape
                     in_arg = fn.body.args[0]
             else:
                 raise NotImplementedError()
@@ -590,7 +605,7 @@ class Realizer(tvm.relay.ExprMutator):
         print('  in_scale: {}'.format(in_scale))
         print('  out_scale: {}'.format(out_scale))
         print(' axis: {}'.format(axis))
-    
+
         if in_dtype == 'float32' and out_dtype == 'float32':
             # do nothing
             return data
