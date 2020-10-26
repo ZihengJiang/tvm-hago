@@ -87,7 +87,7 @@ def main():
             # Quantize
             calib_dataset = get_calibration_dataset(val_data, batch_fn, var_name='data')
             fp32_mod, params = get_model(model_name)
-            qconfig = hago.qconfig(is_channel_quantize=is_per_channel, log_file='temp.log')
+            qconfig = hago.qconfig(use_channel_quantize=is_per_channel, log_file='temp.log')
             quantized_func = quantize_hago(fp32_mod, params, calib_dataset, qconfig)
             acc = eval_acc(quantized_func, val_data, batch_fn, args, var_name='data', target=target, ctx=ctx)
             channel_or_tensor = "per_channel" if is_per_channel else "per_tensor"

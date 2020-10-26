@@ -192,6 +192,7 @@ class Simulator(tvm.relay.ExprMutator):
         self._node2idx = self.topology.node2idx()
         self._node2kinds = self.topology.node2kind()
         self._node2layouts = self.topology.node2layout()
+        self._node2channel_axis = self.topology.node2channel_axis()
         self._edge2idx = self.topology.edge2idx()
         self._prov_dtypes, self._req_dtypes = infer_quantized_dtypes(topology, constraints)
 
@@ -283,22 +284,25 @@ class Simulator(tvm.relay.ExprMutator):
 
                 axis = None
                 qconfig = current_qconfig()
-                is_channel_quantize = qconfig.is_channel_quantize
+                use_channel_quantize = qconfig.use_channel_quantize
                 assert not (oscale_shape != () and iscale_shape != ()), \
                         "Both input and output scale cannot be tensors simultaneously"
                 if oscale_shape != ():
-                    assert is_channel_quantize
+                    # This is the constant node. Find the 'O' dimension.
+                    assert use_channel_quantize
                     assert isinstance(old_arg, relay.Constant)
                     assert node.op.name in qconfig.per_channel_ops()
                     const_node_layout = self._node2layouts[old_arg]
                     assert const_node_layout in ('OIHW', 'HWIO')
-                    axis = const_node_layout.find('O')
+                    axis = self._node2channel_axis[old_arg]
                 elif iscale_shape != ():
-                    assert is_channel_quantize
+                    # This is coming from the per channel quantized operator output, like conv2d
+                    # output is per-channel quantized.
+                    assert use_channel_quantize
                     assert old_arg.op.name in qconfig.per_channel_ops()
                     data_layout = self._node2layouts[old_arg]
                     assert data_layout in ('NCHW', 'NHWC')
-                    axis = data_layout.find('C')
+                    axis = self._node2channel_axis[old_arg]
 
                 sim_arg = self.create_simulated_quantize(new_arg,
                                                          in_dtype,
@@ -353,11 +357,11 @@ class Simulator(tvm.relay.ExprMutator):
         self._name_cnt += 1
         self.output_param_nodes.append((in_scale, out_scale, clip_min, clip_max))
         axis = None
-        is_channel_quantize = current_qconfig().is_channel_quantize
-        if is_channel_quantize and in_scale_shape != ():
+        use_channel_quantize = current_qconfig().use_channel_quantize
+        if use_channel_quantize and in_scale_shape != ():
             layout = self._node2layouts[in_arg]
             assert layout in ('NCHW', 'NHWC'), layout
-            axis = layout.find('C')
+            axis = self._node2channel_axis[in_arg]
 
         # axis = current_qconfig().per_channel_scale_axis
         new_body = _ffi_api.simulated_quantize(new_fn.body,

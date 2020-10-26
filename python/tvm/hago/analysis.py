@@ -38,16 +38,16 @@ class Stats(object):
         self.nodes = nodes
         self.node2kinds = topology.node2kind()
         self.node2layouts = topology.node2layout()
+        self.node2channel_axis = topology.node2channel_axis()
         self.node2edges = topology.node2edges()
         self.data = []
         for idx, node in enumerate(nodes):
             batched_data = data[idx]
             node_kind = self.node2kinds[node]
-            node_layout = self.node2layouts[node]
             if node_kind in (NodeKind.Input, NodeKind.Activation):
-                flatten_data = (batched_data, node_layout)
+                flatten_data = batched_data
             elif node_kind == NodeKind.Weight:
-                flatten_data = (batched_data[0], node_layout)
+                flatten_data = batched_data[0]
             else:
                 raise ValueError
             self.data.append(flatten_data)
@@ -75,20 +75,20 @@ class Stats(object):
     def avg_range(self):
         if self._avg_range is None:
             self._avg_range = []
-            for idx, arr_layout in enumerate(self.data):
+            for idx, arr in enumerate(self.data):
                 node = self.nodes[idx]
-                arr, layout = arr_layout
                 if self.node2kinds[node] in (NodeKind.Input, NodeKind.Activation):
                     arange = self._calculate_avg_range(arr)
                 elif self.node2kinds[node] == NodeKind.Weight:
-                    is_channel_quantized = current_qconfig().is_channel_quantize
+                    use_channel_quantized = current_qconfig().use_channel_quantize
                     out_edges = self.node2edges[node]
                     assert len(out_edges) == 1
                     op_node = out_edges[0][1]
-                    if is_channel_quantized and op_node.op.name in ['nn.conv2d']:
+                    if use_channel_quantized and op_node.op.name in ['nn.conv2d']:
                         # per channel scales
+                        layout = self.node2layouts[node]
                         assert layout in ("OIHW", "HWIO")
-                        axis = layout.find("O")
+                        axis = self.node2channel_axis[node]
                         arr = np.moveaxis(arr, axis, 0)
                         num_scales = arr.shape[0]
                         arr = np.reshape(arr, (num_scales, -1))
