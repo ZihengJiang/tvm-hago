@@ -251,14 +251,6 @@ class Tuner(object):
 
     def _write_to_file(self, fout, measures):
         for m in measures:
-            json_str = serialize(m)
-            print('json str')
-            print(json_str)
-            obj = deserialize(json_str)
-            print('obj')
-            print(type(obj))
-            print(obj)
-            raise ValueError
             fout.write(serialize(m))
             fout.write('\n')
 
