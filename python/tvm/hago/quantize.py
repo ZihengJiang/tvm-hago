@@ -670,5 +670,5 @@ def create_quantizer(graph, hardware, strategy):
     # check model hash
     model_hash = tvm.ir.structural_hash(graph)
     assert model_hash == strategy.model_hash
-    topology = analyze_topology(model, hardware)
+    topology = analyze_topology(graph, hardware)
     return Quantizer(graph, hardware, topology, strategy.bits, strategy.thresholds)
