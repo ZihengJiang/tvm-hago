@@ -14,6 +14,11 @@ def create_hardware():
     hardware.add_op_desc('nn.conv2d', hago.OpDesc(in_dtypes='int8', out_dtypes='int32'))
     return hardware
 
+def x86_cpu():
+    hardware = hago.Hardware()
+    hardware.add_op_desc('nn.dense', hago.OpDesc(in_dtypes='uint8', out_dtypes='int32'))
+    return hardware
+
 
 def test_dense(ishape=(8, 16), wshape=(10, 16), batch_num=5, device='cpu'):
     target, ctx = target_and_ctx(device)
@@ -136,11 +141,9 @@ def test_add(ishape=(32,32), wshape=(32,32), batch_num=5, device='cpu'):
     params = {'weight': tvm.nd.array(weight_np)}
     return func, params, dataset
 
-def check_results(func, params, dataset, device='cpu'):
+def check_results(func, params, dataset, hardware, device='cpu'):
     original_func = func
     target, ctx = target_and_ctx(device)
-    # prepared by user
-    hardware = create_hardware()
 
     func = hago.prerequisite_optimize(func, params)
     print('after optimize')
@@ -168,9 +171,10 @@ if __name__ == '__main__':
     qconfig = hago.qconfig(log_file='temp.log',
                            use_channel_quantize=1,
                            threshold_estimate_method="avg_range")
+    device = 'cpu'
+    hardware = x86_cpu()
     with qconfig:
-        device = 'cpu'
-        func, params, dataset = test_concatenate(device=device)
+        func, params, dataset = test_dense(device=device)
         print('original model:')
         print(func)
-        check_results(func, params, dataset, device)
+        check_results(func, params, dataset, hardware, device)

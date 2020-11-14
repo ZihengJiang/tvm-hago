@@ -31,31 +31,32 @@ import math
 import numpy as np
 import logging
 from collections import namedtuple
+from tvm.relay.qnn.op import simulated_quantize
 
 SimulatedQuantizeParams = namedtuple("SimulatedQuantizeParams", ['in_scale',
+                                                                 'in_zero_point',
                                                                  'out_scale',
-                                                                 'clip_min',
-                                                                 'clip_max',
+                                                                 'out_zero_point',
                                                                  'in_dtype',
                                                                  'out_dtype',
                                                                  ])
 
 
-def simulated_quantize(data,
-                       in_scale,
-                       out_scale,
-                       clip_min,
-                       clip_max,
-                       in_dtype,
-                       out_dtype,
-                       axis=None):
-    in_scale = relay.const(in_scale, dtype='float32')
-    out_scale = relay.const(out_scale, dtype='float32')
-    clip_min = relay.const(clip_min, dtype='float32')
-    clip_max = relay.const(clip_max, dtype='float32')
-    new_node = _ffi_api.simulated_quantize(data, in_scale, out_scale,
-        clip_min, clip_max, in_dtype, out_dtype, True, "round", axis)
-    return new_node
+# def simulated_quantize(data,
+#                        in_scale,
+#                        out_scale,
+#                        clip_min,
+#                        clip_max,
+#                        in_dtype,
+#                        out_dtype,
+#                        axis=None):
+#     in_scale = relay.const(in_scale, dtype='float32')
+#     out_scale = relay.const(out_scale, dtype='float32')
+#     clip_min = relay.const(clip_min, dtype='float32')
+#     clip_max = relay.const(clip_max, dtype='float32')
+#     new_node = _ffi_api.simulated_quantize(data, in_scale, out_scale,
+#         clip_min, clip_max, in_dtype, out_dtype, True, "round", axis)
+#     return new_node
 
 
 def select_desc(graph, hardware, topology, bits):
@@ -210,14 +211,15 @@ class Simulator(tvm.relay.ExprMutator):
         # prepare parameters
         internal_params, output_params = self.calculate_params(bits, thresholds)
         param_map = {}
-        for nodes, p in zip(self.internal_param_nodes, internal_params):
-            vals = [p.in_scale, p.out_scale, p.clip_min, p.clip_max]
-            for node, val in zip(nodes, vals):
-                param_map[node.name_hint] = tvm.nd.array(np.array(val, 'float32'))
-        for nodes, p in zip(self.output_param_nodes, output_params):
-            vals = [p.in_scale, p.out_scale, p.clip_min, p.clip_max]
-            for node, val in zip(nodes, vals):
-                param_map[node.name_hint] = tvm.nd.array(np.array(val, 'float32'))
+        def build_node2arr(param_nodes, params):
+            for (in_scale, in_zero_point, out_scale, out_zero_point), p in zip(param_nodes, params):
+                param_map[in_scale.name_hint] = tvm.nd.array(np.array(p.in_scale, "float32"))
+                param_map[in_zero_point.name_hint] = tvm.nd.array(np.array(p.in_zero_point, "int32"))
+                param_map[out_scale.name_hint] = tvm.nd.array(np.array(p.out_scale, "float32"))
+                param_map[out_zero_point.name_hint] = tvm.nd.array(np.array(p.out_zero_point, "int32"))
+
+        build_node2arr(self.internal_param_nodes, internal_params)
+        build_node2arr(self.output_param_nodes, output_params)
 
         if self._runtime is None:
             # print(self.simulated_graph)
@@ -240,22 +242,21 @@ class Simulator(tvm.relay.ExprMutator):
 
     def create_simulated_quantize(self, input_node,
         in_dtype, out_dtype, axis, in_scale_shape=(), out_scale_shape=()):
-        in_scale = relay.var('in_scale' + str(self._name_cnt), shape=in_scale_shape)
-        out_scale = relay.var('out_scale' + str(self._name_cnt), shape=out_scale_shape)
-        clip_min = relay.var('clip_min' + str(self._name_cnt))
-        clip_max = relay.var('clip_max' + str(self._name_cnt))
+        in_scale = relay.var('in_scale' + str(self._name_cnt), shape=in_scale_shape, dtype="float32")
+        in_zero_point = relay.var('in_zero_point' + str(self._name_cnt), shape=(), dtype="int32")
+        out_scale = relay.var('out_scale' + str(self._name_cnt), shape=out_scale_shape, dtype="float32")
+        out_zero_point = relay.var('out_zero_point' + str(self._name_cnt), shape=(), dtype="int32")
         self._name_cnt += 1
-        self.internal_param_nodes.append((in_scale, out_scale, clip_min, clip_max))
-        new_node = _ffi_api.simulated_quantize(input_node,
-                                               in_scale,
-                                               out_scale,
-                                               clip_min,
-                                               clip_max,
-                                               in_dtype,
-                                               out_dtype,
-                                               True,
-                                               "round",
-                                               axis)
+        self.internal_param_nodes.append((in_scale, in_zero_point, out_scale, out_zero_point))
+        new_node = simulated_quantize(input_node,
+                                      in_scale,
+                                      in_zero_point,
+                                      out_scale,
+                                      out_zero_point,
+                                      in_dtype,
+                                      out_dtype,
+                                      axis,
+                                      "UPWARD")
         return new_node
 
     def _get_dtype(self, src, dst):
@@ -355,7 +356,7 @@ class Simulator(tvm.relay.ExprMutator):
 
         in_scale_shape = ()
         for src in new_fn.body.args:
-            if isinstance(src, relay.Call) and src.op.name == "nn.simulated_quantize":
+            if isinstance(src, relay.Call) and src.op.name == "qnn.simulated_quantize":
                 out_scale_node = src.args[2]
                 assert isinstance(out_scale_node, relay.Var)
                 oshape = tuple(out_scale_node.type_annotation.shape)
@@ -365,12 +366,12 @@ class Simulator(tvm.relay.ExprMutator):
             else:
                 raise NotImplementedError()
 
-        in_scale = relay.var('in_scale' + str(self._name_cnt), shape=in_scale_shape)
-        out_scale = relay.var('out_scale' + str(self._name_cnt), 'float32')
-        clip_min = relay.var('clip_min' + str(self._name_cnt), 'float32')
-        clip_max = relay.var('clip_max' + str(self._name_cnt), 'float32')
+        in_scale = relay.var('in_scale' + str(self._name_cnt), shape=in_scale_shape, dtype="float32")
+        in_zero_point = relay.var('in_zero_point' + str(self._name_cnt), shape=(), dtype="int32")
+        out_scale = relay.var('out_scale' + str(self._name_cnt), shape=(), dtype="float32")
+        out_zero_point = relay.var('out_zero_point' + str(self._name_cnt), shape=(), dtype="int32")
         self._name_cnt += 1
-        self.output_param_nodes.append((in_scale, out_scale, clip_min, clip_max))
+        self.output_param_nodes.append((in_scale, in_zero_point, out_scale, out_zero_point))
         axis = None
         use_channel_quantize = current_qconfig().use_channel_quantize
         if use_channel_quantize and in_scale_shape != ():
@@ -378,17 +379,15 @@ class Simulator(tvm.relay.ExprMutator):
             assert layout in ('NCHW', 'NHWC'), layout
             axis = self._node2channel_axis[in_arg]
 
-        # axis = current_qconfig().per_channel_scale_axis
-        new_body = _ffi_api.simulated_quantize(new_fn.body,
-                                               in_scale,
-                                               out_scale,
-                                               clip_min,
-                                               clip_max,
-                                               in_dtype,
-                                               DataType('float32'),
-                                               True,
-                                               "round",
-                                               axis)
+        new_body = simulated_quantize(new_fn.body,
+                                      in_scale,
+                                      in_zero_point,
+                                      out_scale,
+                                      out_zero_point,
+                                      in_dtype,
+                                      DataType('float32'),
+                                      axis,
+                                      "UPWARD")
 
         new_params = relay.analysis.free_vars(new_body)
         return relay.Function(
@@ -401,7 +400,6 @@ class Simulator(tvm.relay.ExprMutator):
     def calculate_params(self, bits, thresholds):
         """calculate parameters of simulated quantize op from bits and thresholds"""
         graph, topology, constraints = self.graph, self.topology, self.constraints
-        sign_bit = 1
         edge2idx  = self._edge2idx
         node2idx  = self._node2idx
         assert len(thresholds) == len(node2idx)
@@ -441,49 +439,13 @@ class Simulator(tvm.relay.ExprMutator):
         def fvisit(node):
             if isinstance(node, relay.Call):
                 in_scales = list()
-                in_dtypes = list()
-                out_dtypes = list()
                 out_scales = list()
+                params = []
                 for edge in list_in_edges(node):
                     src, _ = edge
                     eidx = edge2idx[edge]
                     in_scale = infer_scale_for_node(src)
-                    print(type(in_scale))
-                    in_scales.append(in_scale.tolist())
-                    in_dtypes.append(prov_dtypes[node2idx[src]])
-                    out_dtypes.append(req_dtypes[eidx])
-                    if 'float' in str(req_dtypes[eidx]):
-                        out_scale = np.float32(1.0)
-                    else:
-                        bit = edge2bit[(src, node)]
-                        integer_range = 2 ** (bit - sign_bit)
-                        thold = thresholds[node2idx[src]]
-                        out_scale = thold / integer_range
-                        if isinstance(out_scale, float):
-                            out_scale = np.float32(out_scale)
-
-                    print(type(out_scale))
-                    out_scales.append(out_scale.tolist())
-
-                rectified_output_scales = None
-                frectify_scale = node.op.get_attr('FHagoRectifyScale')
-                if frectify_scale:
-                    new_output_scales = frectify_scale(node.args,
-                                                       in_scales,
-                                                       out_scales)
-                    rectified_output_scales = list()
-                    for idx, scale in enumerate(new_output_scales):
-                        if isinstance(scale, expr.FloatImm):
-                            rectified_output_scales.append(scale.value)
-                        else:
-                            raise NotImplementedError()
-
-
-                arg_idx = 0
-                for edge in list_in_edges(node):
-                    src, _ = edge
-                    eidx = edge2idx[edge]
-                    in_scale = infer_scale_for_node(src)
+                    in_scales.append(in_scale)
                     in_dtype = prov_dtypes[node2idx[src]]
                     out_dtype = req_dtypes[eidx]
 
@@ -492,28 +454,38 @@ class Simulator(tvm.relay.ExprMutator):
                     if 'float' in str(out_dtype):
                         # dequantize
                         out_scale = 1.0
-                        clip_min = float('nan')
-                        clip_max = float('nan')
+                        out_zero_point = 0
                         print('  not quantized'.format(edge_str((src, node))))
                     else:
                         bit = edge2bit[(src, node)]
+                        sign_bit = 1 if is_signed(out_dtype) else 0
                         integer_range = 2 ** (bit - sign_bit)
-                        if rectified_output_scales is not None:
-                            out_scale = rectified_output_scales[arg_idx]
-                        else:
-                            thold = thresholds[node2idx[src]]
-                            out_scale = thold / integer_range
-                        clip_min = - (integer_range - 1)
-                        clip_max =    integer_range - 1
+                        thold = thresholds[node2idx[src]]
+                        out_scale = thold / integer_range
+                        out_zero_point = 0 is_signed(out_dtype) else integer_range / 2
                         print('  bit={}, threshold={}'.format(bit, thold))
+                        # if isinstance(out_scale, float):
+                        #     out_scale = np.float32(out_scale)
+                    out_scales.append(out_scale)
 
                     # print("{}[{}] -> {}[{}]".format(node_str(src), in_dtype, node_str(node), out_dtype))
-                    param = SimulatedQuantizeParams(in_scale, out_scale, clip_min, clip_max,
+                    param = SimulatedQuantizeParams(in_scale, in_zero_point, out_scale, out_zero_point,
                                                     in_dtype, out_dtype)
                     print('  {}'.format(param))
-                    internal_params.append(param)
-                    arg_idx += 1
+                    params.append(param)
+
+                frectify_scale = node.op.get_attr('FHagoRectifyScale')
+                if frectify_scale:
+                    new_output_scales = frectify_scale(node.args,
+                                                       in_scales,
+                                                       out_scales)
+                    # udpate simulated quantize params
+                    for param, out_scale in zip(params, new_output_scales):
+                        param.out_scale = out_scale
+
+                internal_params += params
                 return
+
             if isinstance(node, relay.Function):
                 # handle output of function
                 assert isinstance(node.body, relay.Call)
