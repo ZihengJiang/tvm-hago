@@ -486,3 +486,16 @@ def subtract(lhs,
                           lhs_scale, lhs_zero_point,
                           rhs_scale, rhs_zero_point,
                           output_scale, output_zero_point)
+
+
+def simulated_quantize(data,
+                       input_scale,
+                       input_zero_point,
+                       output_scale,
+                       output_zero_point,
+                       in_dtype,
+                       out_dtype,
+                       axis,
+                       rounding):
+    return _make.simulated_quantize(data, input_scale, input_zero_point,
+        output_scale, output_zero_point, in_dtype, out_dtype, axis, rounding)
