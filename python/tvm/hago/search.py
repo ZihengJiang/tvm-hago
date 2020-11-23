@@ -200,8 +200,6 @@ def _group_same_graph(graph, hardware, topology, bits_list):
     return groups
 
 
-# TODO(tvm-team): unify hago.tuner and autotvm.tuner to a general combinatorial
-# optimization framework
 class Tuner(object):
     def __init__(self, space, objective, max_trials=None):
         # support different objective: accuracy, kl, transfer_learning_loss
@@ -270,25 +268,30 @@ class Tuner(object):
         print(self.best_measure)
         return self.best_measure
 
+    # TODO: support evaluate on simulated model and do batched measurement
     def _measure(self, bits_list):
-        # support single sample measure and batched measure
-        # [bits] -> [Measure(strategy, MeasureResult)]
-        results = []
-        if isinstance(bits_list, list):
-            groups = _group_same_graph(self.graph, self.hardware, self.topology, bits_list)
-            for simulator, grouped_guesses in groups:
-                constraints = simulator.constraints
-                for bits in grouped_guesses:
-                    # TODO(ziheng) move thresholds outside
-                    thresholds = threshold_estimate(self.graph, self.topology, self.stats, bits)
-                    simulated_out = simulator.eval(bits, thresholds, self.dataset, self.ctx, self.target)
-                    measure_result = self.measure_func(self.graph, self.dataset, simulated_out,
-                                                       self.ctx, self.target)
-                    strategy = Strategy(self.model_hash, bits, thresholds)
-                    results.append(Measure(strategy, measure_result))
-            return results
-        else:
-            raise ValueError
+        assert len(bits_list) == 1
+        bits = bits_list[0]
+        thresholds = threshold_estimate(self.graph, self.topology, self.stats, bits)
+        quantizer = qtz.Quantizer(self.graph, self.hardware, self.topology, bits, thresholds)
+        sgraph = quantizer.simulate()
+        qgraph = quantizer.quantize()
+
+        runtime = relay.create_executor("graph", ctx=self.ctx, target=self.target).evaluate(qgraph)
+        input_keys = [str(param.name_hint) for param in qgraph.params]
+        outputs = []
+        for batch_id, batch in enumerate(self.dataset):
+            inputs = {}
+            for key in input_keys:
+                assert key in batch
+                inputs[key] = batch[key]
+            out = runtime(**inputs)
+            outputs.append(out)
+        measure_result = self.measure_func(self.graph, self.dataset, outputs, self.ctx, self.target)
+        strategy = Strategy(self.model_hash, bits, thresholds)
+        result = Measure(strategy, measure_result)
+        print(result)
+        return [result]
 
 
 class DefaultSetting(Tuner):
@@ -351,40 +354,6 @@ class GreedySearchTuner(Tuner):
             self.decided.append(best_bit)
             self.dim_idx += 1
             self.bit_idx = 0
-
-    def _measure(self, bits_list):
-        assert len(bits_list) == 1
-        bits = bits_list[0]
-        thresholds = threshold_estimate(self.graph, self.topology, self.stats, bits)
-        quantizer = qtz.Quantizer(self.graph, self.hardware, self.topology, bits, thresholds)
-        sgraph = quantizer.simulate()
-        qgraph = quantizer.quantize()
-        # print('original graph')
-        # print(self.graph)
-        # print('simulated graph')
-        # print(sgraph)
-        # print('quantized graph')
-        # print(qgraph)
-        # lowered_qgraph = relay.qnn.transform.CanonicalizeOps()(tvm.IRModule.from_expr(qgraph))
-        # print('lowered quantized graph')
-        # print(lowered_qgraph)
-        # raise ValueError
-
-        runtime = relay.create_executor("graph", ctx=self.ctx, target=self.target).evaluate(qgraph)
-        input_keys = [str(param.name_hint) for param in qgraph.params]
-        outputs = []
-        for batch_id, batch in enumerate(self.dataset):
-            inputs = {}
-            for key in input_keys:
-                assert key in batch
-                inputs[key] = batch[key]
-            out = runtime(**inputs)
-            outputs.append(out)
-        measure_result = self.measure_func(self.graph, self.dataset, outputs, self.ctx, self.target)
-        strategy = Strategy(self.model_hash, bits, thresholds)
-        result = Measure(strategy, measure_result)
-        print(result)
-        return [result]
 
 
 class BatchedGreedySearchTuner(Tuner):

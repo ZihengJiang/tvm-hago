@@ -117,7 +117,7 @@ def load_from_file(fname):
 # FIXME(ziheng))
 def pick_best(fname, key):
     records = load_from_file(fname)
-    records.sort(key=lambda rec: getattr(rec['result'], key))
+    records.sort(key=lambda rec: getattr(rec.result, key))
     if key in ['accuracy']:
         return records[-1]
     elif key in ['kl_divergence']:

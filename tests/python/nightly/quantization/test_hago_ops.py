@@ -16,7 +16,7 @@ def create_hardware():
 
 def x86_cpu():
     hardware = hago.Hardware()
-    hardware.add_op_desc('nn.dense', hago.OpDesc(in_dtypes='uint8', out_dtypes='int32'))
+    hardware.add_op_desc('nn.dense', hago.OpDesc(in_dtypes=['uint8', 'int8'], out_dtypes='int32'))
     return hardware
 
 
@@ -162,10 +162,11 @@ def check_results(func, params, dataset, hardware, device='cpu'):
 
     input_data = [ {**data, **params} for data in dataset.batches ]
     expected_out = hago.base.evaluate(original_func, input_data)[0]
-    simulated_out = hago.base.evaluate(simulated_graph, input_data)[0]
+    # simulated_out = hago.base.evaluate(simulated_graph, input_data)[0]
+    quantized_out = hago.base.evaluate(quantized_graph, input_data)[0]
 
-    for exp_out, sim_out in zip(expected_out, simulated_out):
-        hago.analysis.compare(exp_out, sim_out)
+    for exp_out, qtz_out in zip(expected_out, quantized_out):
+        hago.analysis.compare(exp_out, qtz_out)
 
 if __name__ == '__main__':
     qconfig = hago.qconfig(log_file='temp.log',

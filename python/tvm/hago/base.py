@@ -83,7 +83,7 @@ def build_node_mapping(sgraph, graph):
     fvisit_collect_nodes.nodes = []
 
     def fvisit_collect_snodes(e):
-        if isinstance(e, relay.Call) and e.op.name == 'nn.simulated_quantize':
+        if isinstance(e, relay.Call) and e.op.name == 'qnn.simulated_quantize':
             node = e.args[0]
             if node not in fvisit_collect_snodes.set:
                 # avoid multi-refer
