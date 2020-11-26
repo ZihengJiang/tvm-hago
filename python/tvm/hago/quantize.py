@@ -469,7 +469,7 @@ class Simulator(tvm.relay.ExprMutator):
                         integer_range = 2 ** (bit - sign_bit)
                         thold = thresholds[node2idx[src]]
                         out_scale = thold / integer_range
-                        out_zero_point = 0 if signed else int(integer_range / 2)
+                        out_zero_point = 0 if signed else int(integer_range / 2) - 1 
                         print('  bit={}, threshold={}'.format(bit, thold))
                         # if isinstance(out_scale, float):
                         #     out_scale = np.float32(out_scale)
@@ -540,9 +540,9 @@ class Simulator(tvm.relay.ExprMutator):
         return binded_simulated_graph
 
 
-class Realizer(tvm.relay.ExprMutator):
+class RealizerForNormalOps(tvm.relay.ExprMutator):
     def __init__(self, original_graph, simulated_graph, constraints):
-        super().__init__()
+        super(RealizerForNormalOps, self).__init__()
         self._original_graph = original_graph
         self._simulated_graph = simulated_graph
         self._constraints = constraints
@@ -554,11 +554,8 @@ class Realizer(tvm.relay.ExprMutator):
         return self.visit(self._simulated_graph)
 
     def visit_call(self, node):
-        new_node = super().visit_call(node)
+        new_node = super(RealizerForNormalOps, self).visit_call(node)
         if new_node.op.name == "qnn.simulated_quantize":
-            print('---------')
-            # print('simulated_quantize({})'.format(node_str(node.args[0], self._snode2idx)))
-            new_node = self._realize_simulated_quantize(new_node)
             return new_node
         nidx = self._node2idx[self._snode2node[node]]
         cstr = self._constraints[nidx]
@@ -569,9 +566,16 @@ class Realizer(tvm.relay.ExprMutator):
             new_node = frealize(new_node, in_dtypes, out_dtypes)
         return new_node
 
-    def _realize_simulated_quantize(self, node):
-        data, in_scale, in_zero_point, out_scale, out_zero_point = node.args
-        attrs = node.attrs
+class RealizerForSimulatedQuantize(tvm.relay.ExprMutator):
+    def __init__(self):
+        super(RealizerForSimulatedQuantize, self).__init__()
+
+    def visit_call(self, node):
+        new_node = tvm.relay.ExprMutator.visit_call(self, node)
+        if new_node.op.name != "qnn.simulated_quantize":
+            return new_node
+        data, in_scale, in_zero_point, out_scale, out_zero_point = new_node.args
+        attrs = new_node.attrs
         in_dtype = attrs.in_dtype
         out_dtype = attrs.out_dtype
         axis = attrs.axis
@@ -579,9 +583,9 @@ class Realizer(tvm.relay.ExprMutator):
             axis = -1
         else:
             axis = axis.value
-        print('  in_scale: {}'.format(in_scale))
-        print('  out_scale: {}'.format(out_scale))
-        print(' axis: {}'.format(axis))
+        # print('  in_scale: {}'.format(in_scale))
+        # print('  out_scale: {}'.format(out_scale))
+        # print(' axis: {}'.format(axis))
 
         if in_dtype == 'float32' and out_dtype == 'float32':
             # do nothing
@@ -639,8 +643,10 @@ class Quantizer(object):
     def quantize(self):
         if self.simulated_graph is None:
             self.simulate()
-        self._realizer = Realizer(self.original_graph, self.simulated_graph, self.constraints)
-        self.quantized_graph = self._realizer.realize()
+        self.quantized_graph = RealizerForNormalOps(self.original_graph, self.simulated_graph, self.constraints).realize()
+        print(self.quantized_graph)
+        self.quantized_graph = RealizerForSimulatedQuantize().visit(self.quantized_graph)
+        print(self.quantized_graph)
         mod = relay.transform.InferType()(tvm.IRModule.from_expr(self.quantized_graph))
         self.quantized_graph = mod['main']
         return self.quantized_graph

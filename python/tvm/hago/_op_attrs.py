@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 import tvm
 from tvm import relay
+from tvm.relay import qnn
 from tvm._ffi.runtime_ctypes import DataType
 from ..relay.op import op as _reg
 import topi
@@ -280,17 +281,29 @@ def realize_addition(node, in_types, out_types):
         rhs = relay.cast(rhs, DataType(dtype))
     return forward_op(node, [lhs, rhs])
 
+# @register_realize("nn.dense")
+# def realize_dense(node, in_types, out_types):
+#     data, weight = node.args
+#     fields = node.attrs.list_field_info()
+#     attrs_dict = {}
+#     for field in fields:
+#         key = field.name
+#         attrs_dict[str(key)] = getattr(node.attrs, key)
+#     attrs_dict['out_dtype'] = DataType(out_types[0])
+#     attrs = tvm.ir.make_node("relay.attrs.DenseAttrs", **attrs_dict)
+#     return relay.Call(node.op, node.args, attrs, node.type_args)
+
 @register_realize("nn.dense")
 def realize_dense(node, in_types, out_types):
-    data, weight = node.args
-    fields = node.attrs.list_field_info()
-    attrs_dict = {}
-    for field in fields:
-        key = field.name
-        attrs_dict[str(key)] = getattr(node.attrs, key)
-    attrs_dict['out_dtype'] = DataType(out_types[0])
-    attrs = tvm.ir.make_node("relay.attrs.DenseAttrs", **attrs_dict)
-    return relay.Call(node.op, node.args, attrs, node.type_args)
+    input_sq, kernel_sq = node.args
+    input_zero_point  = input_sq.args[4]
+    input_scale  = input_sq.args[3]
+    kernel_zero_point = kernel_sq.args[4]
+    kernel_scale  = kernel_sq.args[3]
+    units = node.attrs.units
+    out_dtype = DataType(out_types[0])
+    return qnn.op.dense(input_sq, kernel_sq, input_zero_point, kernel_zero_point,
+                        input_scale, kernel_scale, units, out_dtype=out_dtype)
 
 @register_realize("nn.conv2d")
 def realize_conv2d(node, in_types, out_types):
