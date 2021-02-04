@@ -465,11 +465,12 @@ class Simulator(tvm.relay.ExprMutator):
                         assert out_tcode in [DataTypeCode.UINT, DataTypeCode.INT]
                         signed = (out_tcode == DataTypeCode.INT)
                         bit = edge2bit[(src, node)]
-                        sign_bit = 1 if signed else 0
-                        integer_range = 2 ** (bit - sign_bit)
+                        integer_range = 2 ** bit
                         thold = thresholds[node2idx[src]]
-                        out_scale = thold / integer_range
-                        out_zero_point = 0 if signed else int(integer_range / 2) - 1 
+                        # for assymmetric quantization (-thold1, thold2), it would be:
+                        #   (thold2 - (-thold1)) / integer_range
+                        out_scale = (thold - (-thold)) / integer_range
+                        out_zero_point = 0 if signed else int(integer_range / 2) 
                         print('  bit={}, threshold={}'.format(bit, thold))
                         # if isinstance(out_scale, float):
                         #     out_scale = np.float32(out_scale)
