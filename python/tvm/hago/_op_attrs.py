@@ -305,17 +305,35 @@ def realize_dense(node, in_types, out_types):
     return qnn.op.dense(input_sq, kernel_sq, input_zero_point, kernel_zero_point,
                         input_scale, kernel_scale, units, out_dtype=out_dtype)
 
+# @register_realize("nn.conv2d")
+# def realize_conv2d(node, in_types, out_types):
+#     data, weight = node.args
+#     fields = node.attrs.list_field_info()
+#     attrs_dict = {}
+#     for field in fields:
+#         key = field.name
+#         attrs_dict[str(key)] = getattr(node.attrs, key)
+#     attrs_dict['out_dtype'] = DataType(out_types[0])
+#     attrs = tvm.ir.make_node("relay.attrs.Conv2DAttrs", **attrs_dict)
+#     return relay.Call(node.op, node.args, attrs, node.type_args)
+
 @register_realize("nn.conv2d")
 def realize_conv2d(node, in_types, out_types):
-    data, weight = node.args
+    input_sq, kernel_sq = node.args
+    input_zero_point  = input_sq.args[4]
+    input_scale  = input_sq.args[3]
+    kernel_zero_point = kernel_sq.args[4]
+    kernel_scale  = kernel_sq.args[3]
+
     fields = node.attrs.list_field_info()
     attrs_dict = {}
     for field in fields:
         key = field.name
         attrs_dict[str(key)] = getattr(node.attrs, key)
     attrs_dict['out_dtype'] = DataType(out_types[0])
-    attrs = tvm.ir.make_node("relay.attrs.Conv2DAttrs", **attrs_dict)
-    return relay.Call(node.op, node.args, attrs, node.type_args)
+    return qnn.op.conv2d(input_sq, kernel_sq, input_zero_point, kernel_zero_point,
+                         input_scale, kernel_scale, **attrs_dict)
+
 
 @register_realize("clip")
 def realize_clip(node, in_types, out_types):
