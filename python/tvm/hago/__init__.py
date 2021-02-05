@@ -21,7 +21,7 @@ from __future__ import absolute_import as _abs
 from . import _op_attrs
 from .base import qconfig, current_qconfig
 from .analysis import inspect_graph_statistic
-from .hardware import Hardware, OpDesc, create_accelerator_description
+from .hardware import Hardware, OpDesc, create_hardware
 from .search import generate_search_space, search_quantize_strategy
 from .search import DefaultSetting, RandomSearchTuner, GreedySearchTuner, BatchedGreedySearchTuner
 from .search import serialize, deserialize

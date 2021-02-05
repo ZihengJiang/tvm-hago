@@ -139,7 +139,41 @@ class Hardware(object):
         return [desc for desc in descs if desc.is_float()]
 
 
-def create_accelerator_description():
+
+def x86_cpu():
+    hardware = Hardware()
+    hardware.add_op_desc('add', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    # hardware.add_op_desc('add', OpDesc(in_dtypes='int8', out_dtypes='int16'))
+    # hardware.add_op_desc('add', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    # hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes='int8', out_dtypes='int16'))
+    hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes='uint8', out_dtypes='int32'))
+
+    hardware.add_op_desc('concatenate', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('concatenate', OpDesc(in_dtypes='int8', out_dtypes='int8'))
+    hardware.add_op_desc('concatenate', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+
+    hardware.add_op_desc('nn.relu', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    hardware.add_op_desc('clip', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    # hardware.add_op_desc('clip', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.avg_pool2d', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.max_pool2d', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    hardware.add_op_desc('nn.batch_flatten', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.dense', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.global_avg_pool2d', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+
+
+    hardware.add_op_desc('nn.pad', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.pad', OpDesc(in_dtypes='int8', out_dtypes='int8'))
+    hardware.add_op_desc('layout_transform', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('layout_transform', OpDesc(in_dtypes='int8', out_dtypes='int8'))
+    hardware.add_op_desc('multiply', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('subtract', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.adaptive_avg_pool2d', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('mean', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.softmax', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    return hardware
+
+def nvidia_gpu():
     hardware = Hardware()
     hardware.add_op_desc('add', OpDesc(in_dtypes='int32', out_dtypes='int32'))
     # hardware.add_op_desc('add', OpDesc(in_dtypes='int8', out_dtypes='int16'))
@@ -172,14 +206,13 @@ def create_accelerator_description():
     hardware.add_op_desc('nn.softmax', OpDesc(in_dtypes='float32', out_dtypes='float32'))
     return hardware
 
-
-def x86_cpu():
-    hardware = Hardware()
-    hardware.add_op_desc('add', OpDesc(in_dtypes='int32', out_dtypes='int32'))
-    hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes=['uint8', 'int8'], out_dtypes='int32'))
-    hardware.add_op_desc('nn.relu', OpDesc(in_dtypes='int32', out_dtypes='int32'))
-    hardware.add_op_desc('nn.batch_flatten', OpDesc(in_dtypes='float32', out_dtypes='float32'))
-    hardware.add_op_desc('nn.dense', OpDesc(in_dtypes='float32', out_dtypes='float32'))
-    hardware.add_op_desc('nn.global_avg_pool2d', OpDesc(in_dtypes='float32', out_dtypes='float32'))
-    return hardware
+def create_hardware(hw_name):
+    if hw_name == 'x86_cpu':
+        return x86_cpu()
+    elif hw_name == 'nvidia_gpu':
+        return nvidia_gpu()
+    elif hw_Name == 'arm_cpu':
+        return arm_cpu()
+    else:
+        raise ValueError
 

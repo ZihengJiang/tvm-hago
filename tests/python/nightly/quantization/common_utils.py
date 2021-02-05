@@ -21,7 +21,7 @@ def get_calibration_dataset(dataset, batch_fn, var_name, num_samples=100):
 ##################
 # Evaluation infra
 ##################
-def eval_acc(func, dataset, batch_fn, args, var_name, target='cuda', ctx=tvm.gpu(), postprocess=None, log_interval=100):
+def eval_acc(func, dataset, batch_fn, var_name, target='cuda', ctx=tvm.gpu(), postprocess=None, log_interval=100, soundness_check=False):
     with relay.build_config(opt_level=3):
         graph, lib, params = relay.build(func, target)
     # create runtime module
@@ -37,7 +37,7 @@ def eval_acc(func, dataset, batch_fn, args, var_name, target='cuda', ctx=tvm.gpu
     acc_top5.reset()
     # Execute
 
-    if args.soundness_check:
+    if soundness_check:
         exit_at_batch = (100 + batch_size - 1)//batch_size
     else:
         exit_at_batch = -1
@@ -113,7 +113,7 @@ def quantize_hago(mod, params, calib_dataset,
 
 def target_and_ctx(device):
     if device == 'cpu':
-        target = 'llvm'
+        target = 'llvm -mcpu=core-avx2'
         ctx = tvm.cpu()
     elif device == 'gpu':
         target = 'cuda'
