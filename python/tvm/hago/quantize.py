@@ -34,6 +34,7 @@ import logging
 from collections import namedtuple
 from tvm.relay.qnn.op import simulated_quantize
 
+
 SimulatedQuantizeParams = namedtuple("SimulatedQuantizeParams", ['in_scale',
                                                                  'in_zero_point',
                                                                  'out_scale',
@@ -412,6 +413,7 @@ class Simulator(tvm.relay.ExprMutator):
         # num of edges + number of output edges
         internal_params, output_params = [], []
         def infer_scale_and_zero_point(node):
+            print(node_str(node))
             if not topology.is_quantized_node(node) or \
                 isinstance(node, (relay.Var, relay.Constant)):
                 scale = 1.0
@@ -426,7 +428,6 @@ class Simulator(tvm.relay.ExprMutator):
             for s in input_scales:
                 if not isinstance(s, (int, float)):
                     all_scalar = False
-
             if all_scalar:
                 scale = np.float32(finfer_scale(input_scales))
             else:
@@ -435,7 +436,7 @@ class Simulator(tvm.relay.ExprMutator):
                 lhs, rhs = input_scales
                 # support conv2d now, so only do scale multiplication
                 scale = lhs * rhs
-            # TODO(ziheng/animesh): infer zero point 
+            # TODO(ziheng/animesh): infer zero point?
             return scale, 0
 
         print('\ncalculate parameters')
@@ -488,8 +489,10 @@ class Simulator(tvm.relay.ExprMutator):
                                                        in_scales,
                                                        out_scales)
                     # udpate simulated quantize params
-                    for param, out_scale in zip(params, new_output_scales):
-                        param.out_scale = out_scale
+                    for i, out_scale in enumerate(new_output_scales):
+                        p = params[i]
+                        params[i] = SimulatedQuantizeParams(p.in_scale, p.in_zero_point, out_scale.value,
+                                                            p.out_zero_point, p.in_dtype, p.out_dtype)
 
                 internal_params += params
                 return

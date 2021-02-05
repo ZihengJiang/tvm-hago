@@ -171,3 +171,15 @@ def create_accelerator_description():
     hardware.add_op_desc('mean', OpDesc(in_dtypes='float32', out_dtypes='float32'))
     hardware.add_op_desc('nn.softmax', OpDesc(in_dtypes='float32', out_dtypes='float32'))
     return hardware
+
+
+def x86_cpu():
+    hardware = Hardware()
+    hardware.add_op_desc('add', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    hardware.add_op_desc('nn.conv2d', OpDesc(in_dtypes=['uint8', 'int8'], out_dtypes='int32'))
+    hardware.add_op_desc('nn.relu', OpDesc(in_dtypes='int32', out_dtypes='int32'))
+    hardware.add_op_desc('nn.batch_flatten', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.dense', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    hardware.add_op_desc('nn.global_avg_pool2d', OpDesc(in_dtypes='float32', out_dtypes='float32'))
+    return hardware
+
